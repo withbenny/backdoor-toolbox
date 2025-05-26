@@ -1,0 +1,17 @@
+[BDTrainer]
+dataset = "cifar10"
+poison_type = "badnet"
+poison_rate = 0.1
+num_models = 15
+
+[BDTrainer.WaNet]
+cover_rate = 0.1
+
+[BDTrainer.TaCT]
+cover_rate = 0.005
+
+[BDTrainer.adaptive_blend]
+cover_rate = 0.003
+
+[BDTrainer.adaptive_patch]
+cover_rate = 0.006
