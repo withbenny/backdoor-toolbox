@@ -31,7 +31,7 @@ def phase2(dataset, data_rate, poison_type, poison_rate, cover_rate=None):
     if cover_rate is not None:
         cmd += ["-cover_rate", str(cover_rate)]
     subprocess.run(cmd, check=True)
-    if poison_type is not "none":
+    if poison_type != "none":
         print(f"Phase 2: Create {data_rate} {dataset} poisoned dataset with {poison_type} successfully.")
     else:
         print(f"Phase 2: Create {data_rate} {dataset} clean dataset successfully.")
@@ -57,7 +57,7 @@ def phase3(dataset, data_rate, poison_type, poison_rate, num_models, cover_rate=
         if cover_rate is not None:
             cmd += ["-cover_rate", str(cover_rate)]
         subprocess.run(cmd, check=True)
-        if poison_type is not "none":
+        if poison_type != "none":
             print(f"Phase 3: Train model {i+1}/{num_models} on {data_rate} {dataset} poisoned dataset with {poison_type} successfully.")
         else:
             print(f"Phase 3: Train model {i+1}/{num_models} on {data_rate} {dataset} clean dataset successfully.")
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     #     "badnet", "blend", "trojan", "SIG", "dynamic", "ISSBA",
     #     "WaNet", "TaCT", "adaptive_blend", "adaptive_patch"
     # ]
-    poison_types = ["badnet"]
+    poison_types = ["blend"]
     for poison_type in poison_types:
         print(f"=== Running for poison_type: {poison_type} ===")
         run_process(cfg["BDTrainer"], poison_type)
