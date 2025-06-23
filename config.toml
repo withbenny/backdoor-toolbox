@@ -1,6 +1,7 @@
 [BDTrainer]
-dataset = "cifar10"
+dataset = "stl10"
 poison_type = "badnet"
+data_rate = 1.0
 poison_rate = 0.1
 num_models = 15
 

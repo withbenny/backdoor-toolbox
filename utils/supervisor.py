@@ -259,6 +259,7 @@ def get_transforms(args):
                 transforms.Normalize([-0.4914 / 0.247, -0.4822 / 0.243, -0.4465 / 0.261],
                                      [1 / 0.247, 1 / 0.243, 1 / 0.261])
             ])
+        
 
         if args.poison_type == 'SRA':
             data_transform_aug = transforms.Compose([
@@ -282,6 +283,68 @@ def get_transforms(args):
                 transforms.Normalize([-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
                                      [1 / 0.229, 1 / 0.224, 1 / 0.225])
             ])
+    elif args.dataset == 'stl10':
+        if args.no_normalize:
+            data_transform_aug = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomCrop(96, 4),
+                transforms.ToTensor()
+            ])
+            data_transform = transforms.Compose([
+                transforms.ToTensor()
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+            ])
+            normalizer = transforms.Compose([])
+            denormalizer = transforms.Compose([])
+        else:
+            data_transform_aug = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomCrop(96, 4),
+                transforms.ToTensor(),
+                transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+            ])
+            data_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+            ])
+            normalizer = transforms.Compose([
+                transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+            ])
+            denormalizer = transforms.Compose([
+                transforms.Normalize([-0.4408 / 0.2682, -0.4279 / 0.2610, -0.3867 / 0.2686],
+                                     [1 / 0.2682, 1 / 0.2610, 1 / 0.2686])
+            ])
+        
+
+        if args.poison_type == 'SRA':
+            data_transform_aug = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomCrop(96, 4),
+                transforms.ToTensor(),
+                transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+            ])
+            data_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+            ])
+            trigger_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+            ])
+            normalizer = transforms.Compose([
+                transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+            ])
+            denormalizer = transforms.Compose([
+                transforms.Normalize([-0.4408 / 0.2682, -0.4279 / 0.2610, -0.3867 / 0.2686],
+                                     [1 / 0.2682, 1 / 0.2610, 1 / 0.2686])
+            ])
+
     elif args.dataset == 'imagenette':
         if args.no_normalize:
             data_transform_aug = transforms.Compose([
@@ -370,6 +433,8 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
 
     if dataset_name in ['gtsrb', 'cifar10', 'cifar100']:
         img_size = 32
+    elif dataset_name == 'stl10':
+        img_size = 96
     elif dataset_name == 'imagenette' or dataset_name == 'imagenet':
         img_size = 224
     else:
@@ -382,6 +447,15 @@ def get_poison_transform(poison_type, dataset_name, target_class, source_class=1
         denormalizer = transforms.Compose([
             transforms.Normalize([-0.4914 / 0.247, -0.4822 / 0.243, -0.4465 / 0.261],
                                  [1 / 0.247, 1 / 0.243, 1 / 0.261])
+        ])
+        num_classes = 10
+    elif dataset_name == 'stl10':
+        normalizer = transforms.Compose([
+            transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+        ])
+        denormalizer = transforms.Compose([
+            transforms.Normalize([-0.4408 / 0.2682, -0.4279 / 0.2610, -0.3867 / 0.2686],
+                                 [1 / 0.2682, 1 / 0.2610, 1 / 0.2686])
         ])
         num_classes = 10
     elif dataset_name == 'gtsrb':

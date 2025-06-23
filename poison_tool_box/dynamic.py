@@ -13,7 +13,7 @@ class poison_generator():
         os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % cuda_devices
 
         # official pretrained pattern & mask generator model
-        state_dict = torch.load(ckpt_path)
+        state_dict = torch.load(ckpt_path, weights_only=False)
 
         self.dataset = dataset
         self.poison_rate = poison_rate
@@ -94,7 +94,7 @@ class poison_transform():
         self.require_normalization = require_normalization
 
         # official pretrained pattern & mask generator model
-        state_dict = torch.load(ckpt_path)
+        state_dict = torch.load(ckpt_path, weights_only=False)
         self.target_class = target_class  # by default : target_class = 0
         self.denormalizer = denormalizer
         self.normalizer = normalizer

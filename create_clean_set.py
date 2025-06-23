@@ -46,6 +46,14 @@ elif args.dataset == 'cifar10':
                                  download=True, transform=data_transform)
     img_size = 32
     num_classes = 10
+elif args.dataset == 'stl10':
+    data_transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+    clean_set = datasets.STL10(os.path.join(data_dir, 'stl10'), split='test',
+                               download=True, transform=data_transform)
+    img_size = 96
+    num_classes = 10
 elif args.dataset == 'imagenette':
 
     data_transform = transforms.Compose([

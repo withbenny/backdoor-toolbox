@@ -40,6 +40,7 @@ def main():
     parser.add_argument('-devices', type=str, default='0')
     parser.add_argument('-log', default=False, action='store_true')
     parser.add_argument('-seed', type=int, required=False, default=default_args.seed)
+    parser.add_argument('-data_rate', type=float, required=True, default=1.0)
 
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices
@@ -118,6 +119,17 @@ def main():
 
 
     if args.dataset == 'cifar10':
+
+        num_classes = 10
+        arch = supervisor.get_arch(args)
+        momentum = 0.9
+        weight_decay = 1e-4
+        epochs = 100
+        milestones = torch.tensor([50, 75])
+        learning_rate = 0.1
+        batch_size = 128
+    
+    elif args.dataset == 'stl10':
 
         num_classes = 10
         arch = supervisor.get_arch(args)

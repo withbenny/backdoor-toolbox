@@ -11,6 +11,7 @@ triggers_dir = './triggers' # default triggers directory
 imagenet_dir = '/scratch/gpfs/DATASETS/imagenet/ilsvrc_2012_classification_localization' # ImageNet dataset directory (USE YOUR OWN!)
 target_class = {
     'cifar10' : 0,
+    'stl10' : 0,
     'gtsrb' : 2,
     # 'gtsrb' : 12, # BadEncoder
     'imagenette': 0,
@@ -49,6 +50,30 @@ trigger_default = {
         'bpp': 'none',
         'WB': 'none',
     },
+    'stl10': {
+        'none' : 'none',
+        'adaptive_blend': 'hellokitty_96.png',
+        'adaptive_patch': 'none',
+        'adaptive_k_way': 'none',
+        'clean_label' : 'badnet_patch4_dup_96.png',
+        'basic' : 'badnet_patch_96.png',
+        'badnet' : 'badnet_patch_96.png',
+        'blend' : 'hellokitty_96.png',
+        'refool': 'none',
+        'TaCT' : 'trojan_square_96.png',
+        'SIG' : 'none',
+        'WaNet': 'none',
+        'dynamic' : 'none',
+        'ISSBA': 'none',
+        'SleeperAgent': 'none',
+        'badnet_all_to_all' : 'badnet_patch_96.png',
+        'trojannn': 'none',
+        'BadEncoder': 'none',
+        'SRA': 'phoenix_corner_96.png',
+        'trojan': 'trojan_square_96.png',
+        'bpp': 'none',
+        'WB': 'none',
+    },
     'gtsrb': {
         'none' : 'none',
         'adaptive_blend': 'hellokitty_32.png',
@@ -83,6 +108,7 @@ trigger_default = {
 arch = {
     ### for base model & poison distillation
     'cifar10': resnet.ResNet18,
+    'stl10': resnet.ResNet18,
     # 'cifar10': vgg.vgg16_bn,
     # 'cifar10': mobilenetv2.mobilenetv2,
     'gtsrb' : resnet.ResNet18,
@@ -105,6 +131,12 @@ adaptive_patch_train_trigger_names = {
         'badnet_patch4_32.png',
         'trojan_square_32.png',
     ],
+    'stl10': [
+        'phoenix_corner_96.png',
+        'firefox_corner_96.png',
+        'badnet_patch4_96.png',
+        'trojan_square_96.png',
+    ],
     'gtsrb': [
         'phoenix_corner_32.png',
         'firefox_corner_32.png',
@@ -115,6 +147,12 @@ adaptive_patch_train_trigger_names = {
 
 adaptive_patch_train_trigger_alphas = {
     'cifar10': [
+        0.5,
+        0.2,
+        0.5,
+        0.3,
+    ],
+    'stl10': [
         0.5,
         0.2,
         0.5,
@@ -133,6 +171,10 @@ adaptive_patch_test_trigger_names = {
         'phoenix_corner2_32.png',
         'badnet_patch4_32.png',
     ],
+    'stl10': [
+        'phoenix_corner2_32.png',
+        'badnet_patch4_32.png',
+    ],
     'gtsrb': [
         'firefox_corner_32.png',
         'trojan_square_32.png',
@@ -141,6 +183,10 @@ adaptive_patch_test_trigger_names = {
 
 adaptive_patch_test_trigger_alphas = {
     'cifar10': [
+        1,
+        1,
+    ],
+    'stl10': [
         1,
         1,
     ],
@@ -167,6 +213,28 @@ def get_params(args):
             transforms.RandomCrop(32, 4),
             transforms.ToTensor(),
             transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261]),
+        ])
+
+        distillation_ratio = [1/2, 1/5, 1/25, 1/50, 1/100]
+        momentums = [0.7, 0.7, 0.7, 0.7, 0.7, 0.7]
+        lambs = [20, 20, 20, 30, 30, 15]
+        lrs = [0.001, 0.001, 0.001, 0.01, 0.01, 0.01]
+        batch_factors = [2, 2, 2, 2, 2, 2]
+    
+    elif args.dataset == 'stl10':
+
+        num_classes = 10
+
+        data_transform_normalize = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
+        ])
+
+        data_transform_aug = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(96, 4),
+            transforms.ToTensor(),
+            transforms.Normalize([0.4408, 0.4279, 0.3867], [0.2682, 0.2610, 0.2686]),
         ])
 
         distillation_ratio = [1/2, 1/5, 1/25, 1/50, 1/100]

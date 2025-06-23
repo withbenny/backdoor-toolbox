@@ -25,6 +25,7 @@ parser.add_argument('-alpha', type=float,  required=False,
                     default=default_args.parser_default['alpha'])
 parser.add_argument('-trigger', type=str,  required=False,
                     default=None)
+parser.add_argument('-data_rate', type=float,  required=True, default=1.0)
 args = parser.parse_args()
 
 tools.setup_seed(0)
@@ -38,6 +39,48 @@ if args.trigger is None:
 
 if not os.path.exists(os.path.join('poisoned_train_set', args.dataset)):
     os.mkdir(os.path.join('poisoned_train_set', args.dataset))
+
+def reduce_data(dataset, data_rate):
+    if hasattr(dataset, 'targets'):
+        targets = np.array(dataset.targets)
+    elif hasattr(dataset, '_labels'):
+        targets = np.array(dataset._labels)
+    elif hasattr(dataset, 'samples'):
+        targets = np.array([s[1] for s in dataset.samples])
+    else:
+        print("Using iterative method to extract labels from dataset.")
+        try:
+            targets = np.array([label for _, label in dataset])
+        except Exception as e:
+            raise ValueError("Unable to extract labels from dataset. Please check the dataset format.") from e
+    if len(targets) == 0:
+        raise ValueError("The dataset is empty or does not contain labels.")
+
+    unique_classes, counts = np.unique(targets, return_counts=True)
+    original_counts = dict(zip(unique_classes, counts))
+    reduced_indices = []
+    reduced_counts = {}
+
+    print(f"Reducing dataset to {data_rate * 100}% of original size...")
+    for cls in unique_classes:
+        class_indices = np.where(targets == cls)[0]
+        original_count = len(class_indices)
+
+        num_to_keep = int(np.round(original_count * data_rate))
+        if num_to_keep == 0 and data_rate > 0 and original_count > 0:
+            num_to_keep = 1
+        
+        num_to_keep = min(num_to_keep, original_count)
+
+        np.random.shuffle(class_indices)
+        selected_indices = class_indices[:num_to_keep]
+        reduced_indices.extend(selected_indices.tolist())
+        reduced_counts[cls] = len(selected_indices)
+    
+    np.random.shuffle(reduced_indices)
+    print(f"Oringinal counts: {original_counts}, Reduced counts: {reduced_counts}")
+    
+    return Subset(dataset, reduced_indices)
 
 if args.poison_type == 'dynamic':
 
@@ -147,6 +190,16 @@ else:
                                      download=True, transform=data_transform)
         img_size = 32
         num_classes = 10
+    
+    elif args.dataset == 'stl10':
+
+        data_transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+        train_set = datasets.STL10(os.path.join(data_dir, 'stl10'), split='train',
+                                   download=True, transform=data_transform)
+        img_size = 96
+        num_classes = 10
 
     elif args.dataset == 'imagenette':
 
@@ -161,6 +214,9 @@ else:
 
     else:
         raise  NotImplementedError('Undefined Dataset')
+
+if args.data_rate < 1.0:
+    train_set = reduce_data(train_set, args.data_rate)
 
 trigger_transform = transforms.Compose([
     transforms.ToTensor()

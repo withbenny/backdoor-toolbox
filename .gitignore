@@ -13,6 +13,8 @@ data/imagenette2/*
 !data/imagenette2/.dummy
 data/VOCdevkit/*
 !data/VOCdevkit/.dummy
+data/stl10/*
+!data/stl10/.dummy
 
 models/*
 !models/.dummy
@@ -29,6 +31,8 @@ clean_set/gtsrb/*
 !clean_set/gtsrb/.dummy
 clean_set/imagenette/*
 !clean_set/imagenette/.dummy
+clean_set/stl10/*
+!clean_set/stl10/.dummy
 
 logs/*
 !logs/.dummy
