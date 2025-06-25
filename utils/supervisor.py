@@ -103,18 +103,18 @@ def get_poison_set_dir(args):
         return poison_set_dir
     elif args.poison_type == 'blend' or args.poison_type == 'basic' or args.poison_type == 'clean_label':
         blend_alpha = '%.3f' % args.alpha
-        poison_set_dir = 'poisoned_train_set/%s/%s_%s_alpha=%s_trigger=%s' % (
-        args.dataset, args.poison_type, ratio, blend_alpha, args.trigger)
+        poison_set_dir = 'poisoned_train_set/%s/%s_%s_%s_alpha=%s_trigger=%s' % (
+        args.dataset, args.data_rate, args.poison_type, ratio, blend_alpha, args.trigger)
     elif args.poison_type == 'adaptive_blend':
         blend_alpha = '%.3f' % args.alpha
         cover_rate = '%.3f' % args.cover_rate
-        poison_set_dir = 'poisoned_train_set/%s/%s_%s_alpha=%s_cover=%s_trigger=%s' % (
-        args.dataset, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
+        poison_set_dir = 'poisoned_train_set/%s/%s_%s_%s_alpha=%s_cover=%s_trigger=%s' % (
+        args.dataset, args.data_rate, args.poison_type, ratio, blend_alpha, cover_rate, args.trigger)
     elif args.poison_type == 'adaptive_patch' or args.poison_type == 'TaCT' or args.poison_type == 'WaNet':
         cover_rate = '%.3f' % args.cover_rate
-        poison_set_dir = 'poisoned_train_set/%s/%s_%s_cover=%s' % (args.dataset, args.poison_type, ratio, cover_rate)
+        poison_set_dir = 'poisoned_train_set/%s/%s_%s_%s_cover=%s' % (args.dataset, args.data_rate, args.poison_type, ratio, cover_rate)
     else:
-        poison_set_dir = 'poisoned_train_set/%s/%s_%s' % (args.dataset, args.poison_type, ratio)
+        poison_set_dir = 'poisoned_train_set/%s/%s_%s_%s' % (args.dataset, args.data_rate, args.poison_type, ratio)
 
     if config.record_poison_seed: poison_set_dir = f'{poison_set_dir}_poison_seed={config.poison_seed}'  # debug
     # if config.record_model_arch: poison_set_dir = f'{poison_set_dir}_arch={get_arch(args).__name__}'
