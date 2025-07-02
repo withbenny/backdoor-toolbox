@@ -1,9 +1,9 @@
 [BDTrainer]
-dataset = "stl10"
-poison_type = "blend"
-data_rate = 0.2
+dataset = "cifar10"
+poison_type = "none"
+data_rate = 1.0
 poison_rate = 0.1
-num_models = 1
+num_models = 3
 
 [BDTrainer.WaNet]
 cover_rate = 0.1

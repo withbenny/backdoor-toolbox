@@ -107,8 +107,10 @@ trigger_default = {
 
 arch = {
     ### for base model & poison distillation
-    'cifar10': resnet.ResNet18,
-    'stl10': resnet.ResNet18,
+    # 'cifar10': resnet.ResNet18,
+    'cifar10': resnet.ResNet50,
+    # 'stl10': resnet.ResNet18,
+    'stl10': resnet.ResNet50,
     # 'cifar10': vgg.vgg16_bn,
     # 'cifar10': mobilenetv2.mobilenetv2,
     'gtsrb' : resnet.ResNet18,
