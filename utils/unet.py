@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 def double_conv(in_channels, out_channels):
     return nn.Sequential(
         nn.Conv2d(in_channels, out_channels, 3, padding=1),
@@ -9,7 +10,7 @@ def double_conv(in_channels, out_channels):
         nn.ReLU(inplace=True),
         nn.Conv2d(out_channels, out_channels, 3, padding=1),
         nn.BatchNorm2d(out_channels),
-        nn.ReLU(inplace=True)
+        nn.ReLU(inplace=True),
     )
 
 
@@ -24,8 +25,7 @@ class UNet(nn.Module):
         self.dconv_down4 = double_conv(256, 512)
 
         self.maxpool = nn.AvgPool2d(2)
-        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear',
-                                    align_corners=True)
+        self.upsample = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
 
         self.dconv_up3 = double_conv(256 + 512, 256)
         self.dconv_up2 = double_conv(128 + 256, 128)

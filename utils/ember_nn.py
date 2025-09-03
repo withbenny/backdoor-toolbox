@@ -1,9 +1,10 @@
 import torch
 from torch import nn
 
+
 class EmberNN(nn.Module):
 
-    def __init__(self, n_features = 2351, num_classes=2):
+    def __init__(self, n_features=2351, num_classes=2):
 
         super(EmberNN, self).__init__()
 
@@ -24,14 +25,14 @@ class EmberNN(nn.Module):
 
         self.dense4 = nn.Linear(100, 1)
 
-        #self.normal = StandardScaler()
-        #self.model = self.build_model()
-        #self.exp = None
-        #lr = 0.1
-        #momentum = 0.9
-        #decay = 0.000001
-        #opt = SGD(lr=lr, momentum=momentum, decay=decay)
-        #self.model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
+        # self.normal = StandardScaler()
+        # self.model = self.build_model()
+        # self.exp = None
+        # lr = 0.1
+        # momentum = 0.9
+        # decay = 0.000001
+        # opt = SGD(lr=lr, momentum=momentum, decay=decay)
+        # self.model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
 
     def forward(self, x):
 
@@ -56,10 +57,9 @@ class EmberNN(nn.Module):
         return x
 
 
-
 class EmberNN_narrow(nn.Module):
 
-    def __init__(self, n_features = 2351, num_classes=2):
+    def __init__(self, n_features=2351, num_classes=2):
 
         super(EmberNN_narrow, self).__init__()
 
@@ -80,14 +80,14 @@ class EmberNN_narrow(nn.Module):
 
         self.dense4 = nn.Linear(20, 1)
 
-        #self.normal = StandardScaler()
-        #self.model = self.build_model()
-        #self.exp = None
-        #lr = 0.1
-        #momentum = 0.9
-        #decay = 0.000001
-        #opt = SGD(lr=lr, momentum=momentum, decay=decay)
-        #self.model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
+        # self.normal = StandardScaler()
+        # self.model = self.build_model()
+        # self.exp = None
+        # lr = 0.1
+        # momentum = 0.9
+        # decay = 0.000001
+        # opt = SGD(lr=lr, momentum=momentum, decay=decay)
+        # self.model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
 
     def forward(self, x):
 

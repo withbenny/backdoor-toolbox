@@ -10,10 +10,17 @@ from torch.nn.parameter import Parameter
 
 
 class MaskBatchNorm2d(nn.BatchNorm2d):
-    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True,
-                 track_running_stats=True):
+    def __init__(
+        self,
+        num_features,
+        eps=1e-5,
+        momentum=0.1,
+        affine=True,
+        track_running_stats=True,
+    ):
         super(MaskBatchNorm2d, self).__init__(
-            num_features, eps, momentum, affine, track_running_stats)
+            num_features, eps, momentum, affine, track_running_stats
+        )
         self.neuron_mask = Parameter(torch.Tensor(num_features))
         self.neuron_noise = Parameter(torch.Tensor(num_features))
         self.neuron_noise_bias = Parameter(torch.Tensor(num_features))
@@ -62,9 +69,15 @@ class MaskBatchNorm2d(nn.BatchNorm2d):
         return F.batch_norm(
             input,
             # If buffers are not to be tracked, ensure that they won't be updated
-            self.running_mean if not self.training or self.track_running_stats else None,
+            (
+                self.running_mean
+                if not self.training or self.track_running_stats
+                else None
+            ),
             self.running_var if not self.training or self.track_running_stats else None,
-            self.weight * coeff_weight, self.bias * coeff_bias,
-            bn_training, exponential_average_factor, self.eps)
-
-
+            self.weight * coeff_weight,
+            self.bias * coeff_bias,
+            bn_training,
+            exponential_average_factor,
+            self.eps,
+        )

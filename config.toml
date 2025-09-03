@@ -1,0 +1,17 @@
+[Trainer]
+dataset = "cifar10" # choices: cifar10, gtsrb, stl10, cifar100, tinyimagenet, imagenet100
+data_rate = 1.0 # the ratio of data used for training
+poison_rate = 0.1 # the ratio of poisoned data in the training data
+num_models = 1
+
+[Trainer.WaNet]
+cover_rate = 0.1
+
+[Trainer.TaCT]
+cover_rate = 0.005
+
+[Trainer.adaptive_blend]
+cover_rate = 0.003
+
+[Trainer.adaptive_patch]
+cover_rate = 0.006

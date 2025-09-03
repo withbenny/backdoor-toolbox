@@ -3,19 +3,19 @@ import torch
 from tqdm import tqdm
 from sklearn.metrics import silhouette_score
 
+
 def cluster_metrics(cluster_1, cluster_0):
 
     num = len(cluster_1) + len(cluster_0)
     features = torch.cat([cluster_1, cluster_0], dim=0)
 
     labels = torch.zeros(num)
-    labels[:len(cluster_1)] = 1
-    labels[len(cluster_1):] = 0
+    labels[: len(cluster_1)] = 1
+    labels[len(cluster_1) :] = 0
 
     ## Raw Silhouette Score
     raw_silhouette_score = silhouette_score(features, labels)
     return raw_silhouette_score
-
 
 
 def get_features(data_loader, model, num_classes):
@@ -40,43 +40,44 @@ def get_features(data_loader, model, num_classes):
 
 def cleanser(inspection_set, model, num_classes, args, clusters=2):
     """
-        adapted from : https://github.com/hsouri/Sleeper-Agent/blob/master/forest/filtering_defenses.py
+    adapted from : https://github.com/hsouri/Sleeper-Agent/blob/master/forest/filtering_defenses.py
     """
 
-    #from sklearn.decomposition import PCA
-    #from sklearn.decomposition import FastICA
+    # from sklearn.decomposition import PCA
+    # from sklearn.decomposition import FastICA
     from sklearn.cluster import KMeans
 
-    kwargs = {'num_workers': 4, 'pin_memory': True}
+    kwargs = {"num_workers": 4, "pin_memory": True}
 
     inspection_split_loader = torch.utils.data.DataLoader(
-        inspection_set,
-        batch_size=128, shuffle=False, **kwargs)
+        inspection_set, batch_size=128, shuffle=False, **kwargs
+    )
 
     suspicious_indices = []
     feats, class_indices = get_features(inspection_split_loader, model, num_classes)
 
     num_samples = len(inspection_set)
 
-
-
-    if args.dataset == 'cifar10':
+    if args.dataset == "cifar10":
         threshold = 0.15
-    elif args.dataset == 'gtsrb':
+    elif args.dataset == "gtsrb":
         threshold = 0.25
-    elif args.dataset == 'imagenette':
-        threshold = 0 # place holder, not used
+    elif args.dataset == "imagenette":
+        threshold = 0  # place holder, not used
     else:
-        raise NotImplementedError('dataset %s is not supported' % args.datasets)
+        raise NotImplementedError("dataset %s is not supported" % args.datasets)
 
     for target_class in range(num_classes):
 
-        print('class - %d' % target_class)
+        print("class - %d" % target_class)
 
-        if len(class_indices[target_class]) <= 1: continue # no need to perform clustering...
+        if len(class_indices[target_class]) <= 1:
+            continue  # no need to perform clustering...
 
-        temp_feats = [feats[temp_idx].unsqueeze(dim=0) for temp_idx in class_indices[target_class]]
-        temp_feats = torch.cat( temp_feats , dim=0)
+        temp_feats = [
+            feats[temp_idx].unsqueeze(dim=0) for temp_idx in class_indices[target_class]
+        ]
+        temp_feats = torch.cat(temp_feats, dim=0)
         temp_feats = temp_feats - temp_feats.mean(dim=0)
 
         _, _, V = torch.svd(temp_feats, compute_uv=True, some=False)
@@ -87,30 +88,34 @@ def cleanser(inspection_set, model, num_classes, args, clusters=2):
 
         print(projected_feats.shape)
 
-        #projector = PCA(n_components=10)
-        #print('start pca')
-        #projected_feats = projector.fit_transform(temp_feats)
-        #print('end pca')
+        # projector = PCA(n_components=10)
+        # print('start pca')
+        # projected_feats = projector.fit_transform(temp_feats)
+        # print('end pca')
 
-        print('start k-means')
+        print("start k-means")
         kmeans = KMeans(n_clusters=2).fit(projected_feats)
-        print('end k-means')
+        print("end k-means")
 
         # by default, take the smaller cluster as the poisoned cluster
-        if kmeans.labels_.sum() >= len(kmeans.labels_) / 2.:
+        if kmeans.labels_.sum() >= len(kmeans.labels_) / 2.0:
             clean_label = 1
         else:
             clean_label = 0
 
         outliers = []
-        for (bool, idx) in zip((kmeans.labels_ != clean_label).tolist(), list(range(len(kmeans.labels_)))):
+        for bool, idx in zip(
+            (kmeans.labels_ != clean_label).tolist(), list(range(len(kmeans.labels_)))
+        ):
             if bool:
                 outliers.append(class_indices[target_class][idx])
 
         score = silhouette_score(projected_feats, kmeans.labels_)
-        print('[class-%d] silhouette_score = %f' % (target_class, score))
+        print("[class-%d] silhouette_score = %f" % (target_class, score))
         # if score > threshold:# and len(outliers) < len(kmeans.labels_) * 0.35:
-        if len(outliers) < len(kmeans.labels_) * 0.35: # if one of the two clusters is abnormally small
+        if (
+            len(outliers) < len(kmeans.labels_) * 0.35
+        ):  # if one of the two clusters is abnormally small
             print(f"Outlier Num in Class {target_class}:", len(outliers))
             suspicious_indices += outliers
 

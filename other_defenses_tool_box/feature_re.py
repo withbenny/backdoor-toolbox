@@ -15,7 +15,7 @@ from functools import reduce
 
 
 class FeatureRE(BackdoorDefense):
-    name: str = 'FeatureRE'
+    name: str = "FeatureRE"
 
     def __init__(self, args, wp_epochs=100, epochs=400):
         super().__init__(args)
@@ -24,21 +24,23 @@ class FeatureRE(BackdoorDefense):
         self.epchs = epochs
         # test set --- clean
         # std_test - > 10000 full, val -> 2000 (for detection), test -> 8000 (for accuracy)
-        self.test_loader = generate_dataloader(dataset=self.dataset,
-                                               dataset_path=config.data_dir,
-                                               batch_size=100,
-                                               split='test',
-                                               shuffle=False,
-                                               drop_last=False,
-                                               )
+        self.test_loader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=100,
+            split="test",
+            shuffle=False,
+            drop_last=False,
+        )
 
-        self.train_loader = generate_dataloader(dataset=self.dataset,
-                                                dataset_path=config.data_dir,
-                                                batch_size=100,
-                                                split='train',
-                                                shuffle=False,
-                                                drop_last=False,
-                                                )
+        self.train_loader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=100,
+            split="train",
+            shuffle=False,
+            drop_last=False,
+        )
         self.train_set = self.train_loader.dataset
         self.criterion = torch.nn.CrossEntropyLoss().cuda()
         self.re_dataloader = self.get_dataloader_label_remove()
@@ -82,21 +84,40 @@ class FeatureRE(BackdoorDefense):
                 inputs = inputs.cuda()
                 sample_num = inputs.shape[0]
                 total_pred += sample_num
-                target_labels = torch.ones(sample_num, dtype=torch.int64).cuda() * self.target_class
+                target_labels = (
+                    torch.ones(sample_num, dtype=torch.int64).cuda() * self.target_class
+                )
                 if epoch < self.wp_epochs:
-                    predictions, features, x_before_ae, x_after_ae = self.forward_ae(inputs)
+                    predictions, features, x_before_ae, x_after_ae = self.forward_ae(
+                        inputs
+                    )
                 else:
-                    predictions, features, x_before_ae, x_after_ae, features_ori = self.forward_ae_mask_p(inputs)
+                    predictions, features, x_before_ae, x_after_ae, features_ori = (
+                        self.forward_ae_mask_p(inputs)
+                    )
                 loss_ce = self.criterion(predictions, target_labels)
-                mse_loss = torch.nn.MSELoss(size_average=True).cuda()(x_after_ae, x_before_ae)
+                mse_loss = torch.nn.MSELoss(size_average=True).cuda()(
+                    x_after_ae, x_before_ae
+                )
                 if epoch < self.wp_epochs:
-                    dist_loss = torch.cosine_similarity(self.weight_map_class[self.target_class].reshape(-1),
-                                                        features.mean(0).reshape(-1), dim=0)
+                    dist_loss = torch.cosine_similarity(
+                        self.weight_map_class[self.target_class].reshape(-1),
+                        features.mean(0).reshape(-1),
+                        dim=0,
+                    )
                 else:
-                    dist_loss = torch.cosine_similarity(self.weight_map_class[self.target_class].reshape(-1),
-                                                        features_ori.mean(0).reshape(-1), dim=0)
+                    dist_loss = torch.cosine_similarity(
+                        self.weight_map_class[self.target_class].reshape(-1),
+                        features_ori.mean(0).reshape(-1),
+                        dim=0,
+                    )
                 acc_list_ = []
-                minibatch_accuracy_ = torch.sum(torch.argmax(predictions, dim=1) == target_labels).detach() / sample_num
+                minibatch_accuracy_ = (
+                    torch.sum(
+                        torch.argmax(predictions, dim=1) == target_labels
+                    ).detach()
+                    / sample_num
+                )
                 acc_list_.append(minibatch_accuracy_)
                 acc_list_ = torch.stack(acc_list_)
                 avg_acc_G = torch.mean(acc_list_)
@@ -124,14 +145,18 @@ class FeatureRE(BackdoorDefense):
                         total_loss = total_loss + 1 * loss_ce * (1 + weight_acc)
                 total_loss.backward()
                 optimizerR.step()
-                mask_norm_bound = int(reduce(lambda x, y: x * y, self.feature_shape) * 0.03)
+                mask_norm_bound = int(
+                    reduce(lambda x, y: x * y, self.feature_shape) * 0.03
+                )
 
                 if epoch >= self.wp_epochs:
                     for k in range(1):
                         self.AE.eval()
                         self.mask_tanh.requires_grad = True
                         optimizerR_mask.zero_grad()
-                        predictions, features, x_before_ae, x_after_ae, features_ori = self.forward_ae_mask_p(inputs)
+                        predictions, features, x_before_ae, x_after_ae, features_ori = (
+                            self.forward_ae_mask_p(inputs)
+                        )
                         loss_mask_ce = self.criterion(predictions, target_labels)
                         loss_mask_norm = torch.norm(self.get_raw_mask(), 1)
                         loss_mask_total = loss_mask_ce
@@ -143,7 +168,9 @@ class FeatureRE(BackdoorDefense):
                 loss_ce_list.append(loss_ce.detach())
                 loss_dist_list.append(dist_loss.detach())
                 loss_list.append(total_loss.detach())
-                true_pred += torch.sum(torch.argmax(predictions, dim=1) == target_labels).detach()
+                true_pred += torch.sum(
+                    torch.argmax(predictions, dim=1) == target_labels
+                ).detach()
 
                 if epoch >= self.wp_epochs:
                     p_loss_list.append(p_loss)
@@ -183,32 +210,45 @@ class FeatureRE(BackdoorDefense):
                 if avg_loss_std > 1.0 * loss_std_bound:
                     print("@avg_loss_std larger than bound")
 
-                mixed_value = avg_loss_dist.detach() - avg_acc + max(avg_p_loss.detach() - p_loss_bound,
-                                                                     0) / p_loss_bound + max(
-                    avg_loss_mask_norm.detach() - mask_norm_bound, 0) / mask_norm_bound + max(
-                    avg_loss_std.detach() - loss_std_bound, 0) / loss_std_bound
+                mixed_value = (
+                    avg_loss_dist.detach()
+                    - avg_acc
+                    + max(avg_p_loss.detach() - p_loss_bound, 0) / p_loss_bound
+                    + max(avg_loss_mask_norm.detach() - mask_norm_bound, 0)
+                    / mask_norm_bound
+                    + max(avg_loss_std.detach() - loss_std_bound, 0) / loss_std_bound
+                )
                 print("mixed_value:", mixed_value)
                 if mixed_value < mixed_value_best:
                     mixed_value_best = mixed_value
                 weight_p = max(avg_p_loss.detach() - p_loss_bound, 0) / p_loss_bound
                 weight_acc = max(atk_succ_threshold - avg_acc, 0) / atk_succ_threshold
-                weight_std = max(avg_loss_std.detach() - loss_std_bound, 0) / loss_std_bound
+                weight_std = (
+                    max(avg_loss_std.detach() - loss_std_bound, 0) / loss_std_bound
+                )
 
             print(
                 "  Result: ASR: {:.3f} | Cross Entropy Loss: {:.6f} | Dist Loss: {:.6f} | Mixed_value best: {:.6f}".format(
-                    true_pred * 100.0 / total_pred, avg_loss_ce, avg_loss_dist, mixed_value_best
+                    true_pred * 100.0 / total_pred,
+                    avg_loss_ce,
+                    avg_loss_dist,
+                    mixed_value_best,
                 )
             )
 
     def get_dataloader_label_remove(self):
         idx = []
-        dataloader_total = torch.utils.data.DataLoader(self.train_set, batch_size=1, pin_memory=True, shuffle=False)
+        dataloader_total = torch.utils.data.DataLoader(
+            self.train_set, batch_size=1, pin_memory=True, shuffle=False
+        )
         for batch_idx, (inputs, targets) in enumerate(dataloader_total):
             if targets.item() != self.target_class:
                 idx.append(batch_idx)
 
         class_dataset = torch.utils.data.Subset(self.train_set, idx)
-        dataloader_class = torch.utils.data.DataLoader(class_dataset, batch_size=100, pin_memory=True, shuffle=True)
+        dataloader_class = torch.utils.data.DataLoader(
+            class_dataset, batch_size=100, pin_memory=True, shuffle=True
+        )
 
         return dataloader_class
 
@@ -232,7 +272,9 @@ class FeatureRE(BackdoorDefense):
                 features = self.classifier.from_input_to_features(inputs)
                 features_list.append(features)
                 for i in range(inputs.shape[0]):
-                    features_list_class[labels[i].item()].append(features[i].unsqueeze(0))
+                    features_list_class[labels[i].item()].append(
+                        features[i].unsqueeze(0)
+                    )
             all_features = torch.cat(features_list, dim=0)
             weight_map_class = []
             for i in range(self.num_classes):
@@ -260,11 +302,14 @@ class FeatureRE(BackdoorDefense):
         x = self.AE(x)
         x_after_ae = x
         features = self.classifier.from_input_to_features(x)
-        reference_features_index_list = np.random.choice(range(self.all_features.shape[0]), features.shape[0],
-                                                         replace=True)
+        reference_features_index_list = np.random.choice(
+            range(self.all_features.shape[0]), features.shape[0], replace=True
+        )
         reference_features = self.all_features[reference_features_index_list]
         features_ori = features
-        features = mask * features + (1 - mask) * reference_features.reshape(features.shape)
+        features = mask * features + (1 - mask) * reference_features.reshape(
+            features.shape
+        )
         out = self.classifier.from_features_to_output(features)
 
         return out, features, x_before_ae, x_after_ae, features_ori

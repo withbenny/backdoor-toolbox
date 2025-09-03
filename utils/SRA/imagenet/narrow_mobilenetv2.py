@@ -3,11 +3,11 @@ from torch import Tensor
 from typing import Callable, Any, Optional, List
 
 
-__all__ = ['MobileNetV2', 'mobilenet_v2']
+__all__ = ["MobileNetV2", "mobilenet_v2"]
 
 
 model_urls = {
-    'mobilenet_v2': 'https://download.pytorch.org/models/mobilenet_v2-b0353104.pth',
+    "mobilenet_v2": "https://download.pytorch.org/models/mobilenet_v2-b0353104.pth",
 }
 
 
@@ -45,10 +45,18 @@ class ConvBNActivation(nn.Sequential):
         if activation_layer is None:
             activation_layer = nn.ReLU6
         super(ConvBNReLU, self).__init__(
-            nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, dilation=dilation, groups=groups,
-                      bias=False),
+            nn.Conv2d(
+                in_planes,
+                out_planes,
+                kernel_size,
+                stride,
+                padding,
+                dilation=dilation,
+                groups=groups,
+                bias=False,
+            ),
             norm_layer(out_planes),
-            activation_layer(inplace=True)
+            activation_layer(inplace=True),
         )
         self.out_channels = out_planes
 
@@ -83,14 +91,24 @@ class InvertedResidual(nn.Module):
         # if expand_ratio != 1:
         if use_hidden_layer:
             # pw
-            layers.append(ConvBNReLU(inp, hidden_dim, kernel_size=1, norm_layer=norm_layer))
-        layers.extend([
-            # dw
-            ConvBNReLU(hidden_dim, hidden_dim, stride=stride, groups=hidden_dim, norm_layer=norm_layer),
-            # pw-linear
-            nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-            norm_layer(oup),
-        ])
+            layers.append(
+                ConvBNReLU(inp, hidden_dim, kernel_size=1, norm_layer=norm_layer)
+            )
+        layers.extend(
+            [
+                # dw
+                ConvBNReLU(
+                    hidden_dim,
+                    hidden_dim,
+                    stride=stride,
+                    groups=hidden_dim,
+                    norm_layer=norm_layer,
+                ),
+                # pw-linear
+                nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
+                norm_layer(oup),
+            ]
+        )
         self.conv = nn.Sequential(*layers)
         self.out_channels = oup
         self._is_cn = stride > 1
@@ -107,10 +125,10 @@ class MobileNetV2(nn.Module):
         self,
         num_classes: int = 1,
         width_mult: float = 1.0,
-        inverted_residual_setting = None,
+        inverted_residual_setting=None,
         round_nearest: int = 8,
         block: Optional[Callable[..., nn.Module]] = None,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         """
         MobileNet V2 main class
@@ -158,18 +176,45 @@ class MobileNetV2(nn.Module):
         # input_channel = _make_divisible(input_channel * width_mult, round_nearest)
         self.last_channel = int(last_channel * max(1.0, width_mult))
         # self.last_channel = _make_divisible(last_channel * max(1.0, width_mult), round_nearest)
-        features: List[nn.Module] = [ConvBNReLU(3, input_channel, stride=2, norm_layer=norm_layer)]
+        features: List[nn.Module] = [
+            ConvBNReLU(3, input_channel, stride=2, norm_layer=norm_layer)
+        ]
         # building inverted residual blocks
         for t, c, n, s, use_hidden_layer in inverted_residual_setting:
             output_channel = int(c * width_mult)
             # output_channel = _make_divisible(c * width_mult, round_nearest)
             for i in range(n):
                 stride = s if i == 0 else 1
-                if i == 0: features.append(block(input_channel, output_channel, stride, expand_ratio=t, norm_layer=norm_layer, use_hidden_layer=use_hidden_layer))
-                else: features.append(block(input_channel, output_channel, stride, expand_ratio=t, norm_layer=norm_layer, use_res_connect=True, use_hidden_layer=use_hidden_layer))
+                if i == 0:
+                    features.append(
+                        block(
+                            input_channel,
+                            output_channel,
+                            stride,
+                            expand_ratio=t,
+                            norm_layer=norm_layer,
+                            use_hidden_layer=use_hidden_layer,
+                        )
+                    )
+                else:
+                    features.append(
+                        block(
+                            input_channel,
+                            output_channel,
+                            stride,
+                            expand_ratio=t,
+                            norm_layer=norm_layer,
+                            use_res_connect=True,
+                            use_hidden_layer=use_hidden_layer,
+                        )
+                    )
                 input_channel = output_channel
         # building last several layers
-        features.append(ConvBNReLU(input_channel, self.last_channel, kernel_size=1, norm_layer=norm_layer))
+        features.append(
+            ConvBNReLU(
+                input_channel, self.last_channel, kernel_size=1, norm_layer=norm_layer
+            )
+        )
         # make it nn.Sequential
         self.features = nn.Sequential(*features)
 
@@ -182,7 +227,7 @@ class MobileNetV2(nn.Module):
         # weight initialization
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out")
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):

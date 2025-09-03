@@ -15,19 +15,29 @@ from ffcv.fields import RGBImageField, IntField
 
 from ffcv.pipeline.operation import Operation
 from ffcv.loader import Loader, OrderOption
-from ffcv.transforms import ToTensor, ToDevice, Squeeze, NormalizeImage, \
-    RandomHorizontalFlip, ToTorchImage
-from ffcv.fields.rgb_image import CenterCropRGBImageDecoder, \
-    RandomResizedCropRGBImageDecoder, SimpleRGBImageDecoder
+from ffcv.transforms import (
+    ToTensor,
+    ToDevice,
+    Squeeze,
+    NormalizeImage,
+    RandomHorizontalFlip,
+    ToTorchImage,
+)
+from ffcv.fields.rgb_image import (
+    CenterCropRGBImageDecoder,
+    RandomResizedCropRGBImageDecoder,
+    SimpleRGBImageDecoder,
+)
 from ffcv.fields.basics import IntDecoder
 
 
-root_dir = './data/imagenet/' #'/shadowdata/xiangyu/imagenet_256/'
-test_set_labels = os.path.join(root_dir, 'ILSVRC2012_validation_ground_truth.txt')
+root_dir = "./data/imagenet/"  #'/shadowdata/xiangyu/imagenet_256/'
+test_set_labels = os.path.join(root_dir, "ILSVRC2012_validation_ground_truth.txt")
 
 
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406]) * 255
 IMAGENET_STD = np.array([0.229, 0.224, 0.225]) * 255
+
 
 def find_classes(directory: str) -> Tuple[List[str], Dict[str, int], Dict[int, str]]:
     """Finds the class folders in a dataset.
@@ -42,7 +52,6 @@ def find_classes(directory: str) -> Tuple[List[str], Dict[str, int], Dict[int, s
     idx_to_class = {i: cls_name for i, cls_name in enumerate(classes)}
 
     return classes, class_to_idx, idx_to_class
-
 
 
 def assign_img_identifier(directory, classes):
@@ -64,19 +73,27 @@ def assign_img_identifier(directory, classes):
     return num_imgs, img_id_to_path, img_labels
 
 
-
 class imagenet_dataset(Dataset):
-    def __init__(self, directory, shift=False,
-                 poison_directory=None, poison_indices=None,
-                 label_file=None, target_class = None, num_classes=1000):
+    def __init__(
+        self,
+        directory,
+        shift=False,
+        poison_directory=None,
+        poison_indices=None,
+        label_file=None,
+        target_class=None,
+        num_classes=1000,
+    ):
 
         self.num_classes = num_classes
         self.shift = shift
 
-        if label_file is None: # divide classes by directory
+        if label_file is None:  # divide classes by directory
             self.classes, self.class_to_idx, self.idx_to_class = find_classes(directory)
-            self.num_imgs, self.img_id_to_path, self.img_labels = assign_img_identifier(directory, self.classes)
-        else: # samples from all classes are in the same directory
+            self.num_imgs, self.img_id_to_path, self.img_labels = assign_img_identifier(
+                directory, self.classes
+            )
+        else:  # samples from all classes are in the same directory
             entries = sorted(entry.name for entry in os.scandir(directory))
             self.num_imgs = len(entries)
             self.img_id_to_path = []
@@ -93,7 +110,6 @@ class imagenet_dataset(Dataset):
 
         self.is_poison = [False for _ in range(self.num_imgs)]
 
-
         if poison_indices is not None:
             for i in poison_indices:
                 self.is_poison[i] = True
@@ -104,16 +120,18 @@ class imagenet_dataset(Dataset):
         if self.target_class is not None:
             self.target_class = torch.tensor(self.target_class).long()
 
-
         for i in range(self.num_imgs):
             if self.is_poison[i]:
-                self.img_id_to_path[i] = os.path.join(self.poison_directory, self.img_id_to_path[i])
+                self.img_id_to_path[i] = os.path.join(
+                    self.poison_directory, self.img_id_to_path[i]
+                )
                 self.img_labels[i] = self.target_class
             else:
-                self.img_id_to_path[i] = os.path.join(self.directory, self.img_id_to_path[i])
+                self.img_id_to_path[i] = os.path.join(
+                    self.directory, self.img_id_to_path[i]
+                )
                 if self.shift:
                     self.img_labels[i] = (self.img_labels[i] + 1) % self.num_classes
-
 
     def __len__(self):
         return self.num_imgs
@@ -126,13 +144,14 @@ class imagenet_dataset(Dataset):
         return img, label
 
 
+def get_ffcv_loader(
+    dataset, nick_name, batch_size=128, num_workers=8, aug=False, scale_for_ct=False
+):
 
-def get_ffcv_loader(dataset, nick_name, batch_size = 128,
-                    num_workers = 8,
-                    aug=False, scale_for_ct=False):
-
-    if scale_for_ct: res = 64
-    else: res = 224
+    if scale_for_ct:
+        res = 64
+    else:
+        res = 224
 
     if aug:
         decoder = RandomResizedCropRGBImageDecoder((res, res))
@@ -142,7 +161,7 @@ def get_ffcv_loader(dataset, nick_name, batch_size = 128,
             ToTensor(),
             ToDevice(0, non_blocking=True),
             ToTorchImage(),
-            NormalizeImage(IMAGENET_MEAN, IMAGENET_STD, np.float16)
+            NormalizeImage(IMAGENET_MEAN, IMAGENET_STD, np.float16),
         ]
     else:
         decoder = SimpleRGBImageDecoder()
@@ -152,7 +171,7 @@ def get_ffcv_loader(dataset, nick_name, batch_size = 128,
             ToTensor(),
             ToDevice(0, non_blocking=True),
             ToTorchImage(),
-            NormalizeImage(IMAGENET_MEAN, IMAGENET_STD, np.float16)
+            NormalizeImage(IMAGENET_MEAN, IMAGENET_STD, np.float16),
         ]
 
     label_pipeline: List[Operation] = [
@@ -162,45 +181,45 @@ def get_ffcv_loader(dataset, nick_name, batch_size = 128,
         ToDevice(0, non_blocking=True),
     ]
 
+    pipelines = {"image": image_pipeline, "label": label_pipeline}
 
-    pipelines ={
-        'image': image_pipeline,
-        'label': label_pipeline
-    }
-
-    cache_dir = os.path.join(root_dir, 'ffcv_cache')
+    cache_dir = os.path.join(root_dir, "ffcv_cache")
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
 
     write_path = os.path.join(cache_dir, nick_name)
 
-    print('search for :', write_path)
+    print("search for :", write_path)
 
     if not os.path.exists(write_path):
-        print('[Fail to find %s...]' % write_path)
-        print('Now, compile the ffcv-format dataset into %s' % write_path)
+        print("[Fail to find %s...]" % write_path)
+        print("Now, compile the ffcv-format dataset into %s" % write_path)
         # Pass a type for each data field
-        writer = DatasetWriter(write_path, {
-            # Tune options to optimize dataset size, throughput at train-time
-            'image': RGBImageField(
-                max_resolution=256,
-            ),
-            'label': IntField()
-        })
+        writer = DatasetWriter(
+            write_path,
+            {
+                # Tune options to optimize dataset size, throughput at train-time
+                "image": RGBImageField(
+                    max_resolution=256,
+                ),
+                "label": IntField(),
+            },
+        )
         # Write dataset
         writer.from_indexed_dataset(dataset)
     else:
-        print('Found!')
-
+        print("Found!")
 
     order = OrderOption.QUASI_RANDOM
-    loader = Loader(write_path,
-                    batch_size=batch_size,
-                    num_workers=num_workers,
-                    order=order,
-                    os_cache=True,
-                    drop_last=True,
-                    pipelines=pipelines)
+    loader = Loader(
+        write_path,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        order=order,
+        os_cache=True,
+        drop_last=True,
+        pipelines=pipelines,
+    )
 
     """
     loader = Loader(write_path, batch_size=batch_size, num_workers=num_workers,

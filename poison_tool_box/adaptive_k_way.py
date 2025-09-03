@@ -16,27 +16,29 @@ each of them is poisoned indepently at training time,
 but are poisoned together at inference time.
 """
 
-k = 4 # number of poison pixels
-pixel_locs = [[16, 11],
-              [27, 5],
-              [7, 30],
-              [22, 22]] # locations of `k` pixels
-pixel_vals = [[92./255., 0./255., 24./255.],
-              [88./255., 112./255., 110./255.],
-              [0./255., 32./255., 46./255.],
-              [11./255., 49./255., 95./255.]] # intensity of `k` pixels
+k = 4  # number of poison pixels
+pixel_locs = [[16, 11], [27, 5], [7, 30], [22, 22]]  # locations of `k` pixels
+pixel_vals = [
+    [92.0 / 255.0, 0.0 / 255.0, 24.0 / 255.0],
+    [88.0 / 255.0, 112.0 / 255.0, 110.0 / 255.0],
+    [0.0 / 255.0, 32.0 / 255.0, 46.0 / 255.0],
+    [11.0 / 255.0, 49.0 / 255.0, 95.0 / 255.0],
+]  # intensity of `k` pixels
 
-class poison_generator():
 
-    def __init__(self, img_size, dataset, poison_rate, path, target_class=0, cover_rate=0.01):
+class poison_generator:
+
+    def __init__(
+        self, img_size, dataset, poison_rate, path, target_class=0, cover_rate=0.01
+    ):
 
         self.img_size = img_size
         self.dataset = dataset
         self.poison_rate = poison_rate
         self.path = path  # path to save the dataset
-        self.target_class = target_class # by default : target_class = 0
+        self.target_class = target_class  # by default : target_class = 0
         self.cover_rate = cover_rate
-        
+
         # number of images
         self.num_img = len(dataset)
 
@@ -49,12 +51,13 @@ class poison_generator():
         random.shuffle(id_set)
         num_poison = int(self.num_img * self.poison_rate)
         poison_indices = id_set[:num_poison]
-        poison_indices.sort() # increasing order
+        poison_indices.sort()  # increasing order
 
         num_cover = int(self.num_img * self.cover_rate)
-        cover_indices = id_set[num_poison:num_poison+num_cover] # use **non-overlapping** images to cover
+        cover_indices = id_set[
+            num_poison : num_poison + num_cover
+        ]  # use **non-overlapping** images to cover
         cover_indices.sort()
-
 
         label_set = []
         pt = 0
@@ -77,28 +80,28 @@ class poison_generator():
                         img[1, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][1]
                         img[2, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][2]
                         break
-                ct+=1
+                ct += 1
 
             # poisoned image
             if pt < num_poison and poison_indices[pt] == i:
                 poison_id.append(cnt)
-                gt = self.target_class # change the label to the target class
+                gt = self.target_class  # change the label to the target class
                 for j in range(k):
                     if pt < (j + 1) * (num_poison / k):
                         img[0, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][0]
                         img[1, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][1]
                         img[2, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][2]
                         break
-                pt+=1
+                pt += 1
 
             # img_file_name = '%d.png' % cnt
             # img_file_path = os.path.join(self.path, img_file_name)
             # save_image(img, img_file_path)
             # print('[Generate Poisoned Set] Save %s' % img_file_path)
-            
+
             img_set.append(img.unsqueeze(0))
             label_set.append(gt)
-            cnt+=1
+            cnt += 1
 
         img_set = torch.cat(img_set, dim=0)
         label_set = torch.LongTensor(label_set)
@@ -106,19 +109,19 @@ class poison_generator():
         cover_indices = cover_id
         print("Poison indices:", poison_indices)
         print("Cover indices:", cover_indices)
-        
+
         # demo
         img, gt = self.dataset[0]
         for j in range(k):
             img[0, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][0]
             img[1, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][1]
             img[2, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][2]
-        save_image(img, os.path.join(self.path, 'demo.png'))
+        save_image(img, os.path.join(self.path, "demo.png"))
 
         return img_set, poison_indices, cover_indices, label_set
 
 
-class poison_transform():
+class poison_transform:
 
     def __init__(self, img_size, target_class=0, denormalizer=None, normalizer=None):
 
@@ -136,7 +139,7 @@ class poison_transform():
             data[:, 2, pixel_locs[j][0], pixel_locs[j][1]] = pixel_vals[j][2]
         data = self.normalizer(data)
         labels[:] = self.target_class
-        
+
         # debug
         # from torchvision.utils import save_image
         # save_image(reverse_preprocess(data)[0], 'a.png')

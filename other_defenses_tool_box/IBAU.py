@@ -14,6 +14,7 @@ from tqdm import tqdm
 from .tools import generate_dataloader, AverageMeter, accuracy
 import random
 
+
 class IBAU(BackdoorDefense):
     """
     Implicit Bacdoor Adversarial Unlearning (I-BAU)
@@ -33,7 +34,7 @@ class IBAU(BackdoorDefense):
 
     """
 
-    def __init__(self, args, batch_size=100, optim='Adam', lr=0.001, n_rounds=3, K=5):
+    def __init__(self, args, batch_size=100, optim="Adam", lr=0.001, n_rounds=3, K=5):
         super().__init__(args)
 
         self.args = args
@@ -42,67 +43,79 @@ class IBAU(BackdoorDefense):
         self.lr = lr
         self.n_rounds = n_rounds
         self.K = K
-        
 
-        self.folder_path = 'other_defenses_tool_box/results/IBAU'
+        self.folder_path = "other_defenses_tool_box/results/IBAU"
         if not os.path.exists(self.folder_path):
             os.mkdir(self.folder_path)
-        
-        self.test_loader = generate_dataloader(dataset=self.dataset,
-                                                dataset_path=config.data_dir,
-                                                batch_size=100,
-                                                split='test',
-                                                shuffle=False,
-                                                drop_last=False,
-                                                data_transform=self.data_transform)
 
-        self.unlloader = generate_dataloader(dataset=self.dataset,
-                                                dataset_path=config.data_dir,
-                                                batch_size=batch_size,
-                                                split='val',
-                                                shuffle=True,
-                                                drop_last=False,
-                                                )
+        self.test_loader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=100,
+            split="test",
+            shuffle=False,
+            drop_last=False,
+            data_transform=self.data_transform,
+        )
+
+        self.unlloader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=batch_size,
+            split="val",
+            shuffle=True,
+            drop_last=False,
+        )
 
     def detect(self):
         argss = self.args
         model = self.model
         unlloader = self.unlloader
-        
-        
+
         criterion = nn.CrossEntropyLoss()
-        if self.optim == 'SGD':
+        if self.optim == "SGD":
             outer_opt = torch.optim.SGD(model.parameters(), lr=self.lr)
-        elif self.optim == 'Adam':
+        elif self.optim == "Adam":
             outer_opt = torch.optim.Adam(model.parameters(), lr=self.lr)
 
         # ACC = get_results(model, criterion, clnloader, device)
         # ASR = get_results(model, criterion, poiloader, device)
         # print('Original ACC:', ACC)
         # print('Original ASR:', ASR)
-        test(model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+        test(
+            model,
+            test_loader=self.test_loader,
+            poison_test=True,
+            poison_transform=self.poison_transform,
+            num_classes=self.num_classes,
+            source_classes=self.source_classes,
+            all_to_all=("all_to_all" in self.args.dataset),
+        )
 
         ### define the inner loss L2
         def loss_inner(perturb, model_params):
             images = images_list[0].cuda()
             labels = labels_list[0].long().cuda()
-        #     per_img = torch.clamp(images+perturb[0],min=0,max=1)
-            per_img = images+perturb[0]
+            #     per_img = torch.clamp(images+perturb[0],min=0,max=1)
+            per_img = images + perturb[0]
             per_logits = model.forward(per_img)
-            loss = F.cross_entropy(per_logits, labels, reduction='none')
-            loss_regu = torch.mean(-loss) +0.001*torch.pow(torch.norm(perturb[0]),2)
+            loss = F.cross_entropy(per_logits, labels, reduction="none")
+            loss_regu = torch.mean(-loss) + 0.001 * torch.pow(torch.norm(perturb[0]), 2)
             return loss_regu
 
         ### define the outer loss L1
         def loss_outer(perturb, model_params):
             portion = 0.01
-            images, labels = images_list[batchnum].cuda(), labels_list[batchnum].long().cuda()
-            patching = torch.zeros_like(images, device='cuda')
+            images, labels = (
+                images_list[batchnum].cuda(),
+                labels_list[batchnum].long().cuda(),
+            )
+            patching = torch.zeros_like(images, device="cuda")
             number = images.shape[0]
-            rand_idx = random.sample(list(np.arange(number)),int(number*portion))
+            rand_idx = random.sample(list(np.arange(number)), int(number * portion))
             patching[rand_idx] = perturb[0]
-        #     unlearn_imgs = torch.clamp(images+patching,min=0,max=1)
-            unlearn_imgs = images+patching
+            #     unlearn_imgs = torch.clamp(images+patching,min=0,max=1)
+            unlearn_imgs = images + patching
             logits = model(unlearn_imgs)
             criterion = nn.CrossEntropyLoss()
             loss = criterion(logits, labels)
@@ -114,47 +127,59 @@ class IBAU(BackdoorDefense):
             labels_list.append(labels)
         inner_opt = GradientDescent(loss_inner, 0.1)
 
-
         ### inner loop and optimization by batch computing
         print("=> Conducting Defence..")
-        model.eval() # Finetuning in eval() mode seems to be the authors' design choice.
+        model.eval()  # Finetuning in eval() mode seems to be the authors' design choice.
 
         for round in range(self.n_rounds):
-            batch_pert = torch.zeros_like(self.test_loader.dataset[0][0].unsqueeze(0), requires_grad=True, device='cuda')
-            batch_opt = torch.optim.SGD(params=[batch_pert],lr=10)
-        
+            batch_pert = torch.zeros_like(
+                self.test_loader.dataset[0][0].unsqueeze(0),
+                requires_grad=True,
+                device="cuda",
+            )
+            batch_opt = torch.optim.SGD(params=[batch_pert], lr=10)
+
             for images, labels in unlloader:
                 images = images.cuda()
-                ori_lab = torch.argmax(model.forward(images),axis = 1).long()
-        #         per_logits = model.forward(torch.clamp(images+batch_pert,min=0,max=1))
-                per_logits = model.forward(images+batch_pert)
-                loss = F.cross_entropy(per_logits, ori_lab, reduction='mean')
-                loss_regu = torch.mean(-loss) +0.001*torch.pow(torch.norm(batch_pert),2)
+                ori_lab = torch.argmax(model.forward(images), axis=1).long()
+                #         per_logits = model.forward(torch.clamp(images+batch_pert,min=0,max=1))
+                per_logits = model.forward(images + batch_pert)
+                loss = F.cross_entropy(per_logits, ori_lab, reduction="mean")
+                loss_regu = torch.mean(-loss) + 0.001 * torch.pow(
+                    torch.norm(batch_pert), 2
+                )
                 batch_opt.zero_grad()
-                loss_regu.backward(retain_graph = True)
+                loss_regu.backward(retain_graph=True)
                 batch_opt.step()
 
-            #l2-ball
+            # l2-ball
             # pert = batch_pert * min(1, 10 / torch.norm(batch_pert))
             pert = batch_pert
 
-            #unlearn step         
-            for batchnum in range(len(images_list)): 
+            # unlearn step
+            for batchnum in range(len(images_list)):
                 outer_opt.zero_grad()
-                fixed_point(pert, list(model.parameters()), self.K, inner_opt, loss_outer) 
+                fixed_point(
+                    pert, list(model.parameters()), self.K, inner_opt, loss_outer
+                )
                 outer_opt.step()
-            
-            print('Round:',round)            
-            test(model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+
+            print("Round:", round)
+            test(
+                model,
+                test_loader=self.test_loader,
+                poison_test=True,
+                poison_transform=self.poison_transform,
+                num_classes=self.num_classes,
+                source_classes=self.source_classes,
+                all_to_all=("all_to_all" in self.args.dataset),
+            )
 
         save_path = supervisor.get_model_dir(self.args, defense=True)
         print(f"Saved to {save_path}")
         torch.save(self.model.module.state_dict(), save_path)
-        
-        return
 
-    
-    
+        return
 
 
 """
@@ -167,11 +192,11 @@ from typing import List, Callable
 from torch import Tensor
 from torch.autograd import grad as torch_grad
 
-'''
+"""
 Based on the paper 'On the Iteration Complexity of Hypergradient Computation,' this code was created.
 Source: https://github.com/prolearner/hypertorch/blob/master/hypergrad/hypergradients.py
 Original Author: Riccardo Grazzi
-'''
+"""
 
 
 class DifferentiableOptimizer:
@@ -183,7 +208,11 @@ class DifferentiableOptimizer:
         """
         self.data_iterator = None
         if data_or_iter:
-            self.data_iterator = data_or_iter if hasattr(data_or_iter, '__next__') else repeat(data_or_iter)
+            self.data_iterator = (
+                data_or_iter
+                if hasattr(data_or_iter, "__next__")
+                else repeat(data_or_iter)
+            )
 
         self.loss_f = loss_f
         self.dim_mult = dim_mult
@@ -191,7 +220,9 @@ class DifferentiableOptimizer:
 
     def get_opt_params(self, params):
         opt_params = [p for p in params]
-        opt_params.extend([torch.zeros_like(p) for p in params for _ in range(self.dim_mult-1) ])
+        opt_params.extend(
+            [torch.zeros_like(p) for p in params for _ in range(self.dim_mult - 1)]
+        )
         return opt_params
 
     def step(self, params, hparams, create_graph):
@@ -209,9 +240,12 @@ class DifferentiableOptimizer:
             self.curr_loss = self.loss_f(params, hparams)
         return self.curr_loss
 
+
 class GradientDescent(DifferentiableOptimizer):
     def __init__(self, loss_f, step_size, data_or_iter=None):
-        super(GradientDescent, self).__init__(loss_f, dim_mult=1, data_or_iter=data_or_iter)
+        super(GradientDescent, self).__init__(
+            loss_f, dim_mult=1, data_or_iter=data_or_iter
+        )
         self.step_size_f = step_size if callable(step_size) else lambda x: step_size
 
     def step(self, params, hparams, create_graph):
@@ -225,20 +259,32 @@ def gd_step(params, loss, step_size, create_graph=True):
     return [w - step_size * g for w, g in zip(params, grads)]
 
 
-def grad_unused_zero(output, inputs, grad_outputs=None, retain_graph=False, create_graph=False):
-    grads = torch.autograd.grad(output, inputs, grad_outputs=grad_outputs, allow_unused=True,
-                                retain_graph=retain_graph, create_graph=create_graph)
+def grad_unused_zero(
+    output, inputs, grad_outputs=None, retain_graph=False, create_graph=False
+):
+    grads = torch.autograd.grad(
+        output,
+        inputs,
+        grad_outputs=grad_outputs,
+        allow_unused=True,
+        retain_graph=retain_graph,
+        create_graph=create_graph,
+    )
 
     def grad_or_zeros(grad, var):
         return torch.zeros_like(var) if grad is None else grad
 
     return tuple(grad_or_zeros(g, v) for g, v in zip(grads, inputs))
 
+
 def get_outer_gradients(outer_loss, params, hparams, retain_graph=True):
     grad_outer_w = grad_unused_zero(outer_loss, params, retain_graph=retain_graph)
-    grad_outer_hparams = grad_unused_zero(outer_loss, hparams, retain_graph=retain_graph)
+    grad_outer_hparams = grad_unused_zero(
+        outer_loss, hparams, retain_graph=retain_graph
+    )
 
     return grad_outer_w, grad_outer_hparams
+
 
 def update_tensor_grads(hparams, grads):
     for l, g in zip(hparams, grads):
@@ -248,14 +294,16 @@ def update_tensor_grads(hparams, grads):
             l.grad += g
 
 
-def fixed_point(params: List[Tensor],
-                hparams: List[Tensor],
-                K: int ,
-                fp_map: Callable[[List[Tensor], List[Tensor]], List[Tensor]],
-                outer_loss: Callable[[List[Tensor], List[Tensor]], Tensor],
-                tol=1e-10,
-                set_grad=True,
-                stochastic=False) -> List[Tensor]:
+def fixed_point(
+    params: List[Tensor],
+    hparams: List[Tensor],
+    K: int,
+    fp_map: Callable[[List[Tensor], List[Tensor]], List[Tensor]],
+    outer_loss: Callable[[List[Tensor], List[Tensor]], Tensor],
+    tol=1e-10,
+    set_grad=True,
+    stochastic=False,
+) -> List[Tensor]:
     """
     Computes the hypergradient by applying K steps of the fixed point method (it can end earlier when tol is reached).
     Args:
@@ -304,6 +352,7 @@ def fixed_point(params: List[Tensor],
         update_tensor_grads(hparams, grads)
 
     return grads
+
 
 def cat_list_to_tensor(list_tx):
     return torch.cat([xx.reshape([-1]) for xx in list_tx])

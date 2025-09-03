@@ -39,9 +39,15 @@ class FP(BackdoorDefense):
 
     """
 
-    def __init__(self, args, prune_ratio: float = 0.95, finetune_epoch=10, max_allowed_acc_drop=0.2):
+    def __init__(
+        self,
+        args,
+        prune_ratio: float = 0.95,
+        finetune_epoch=10,
+        max_allowed_acc_drop=0.2,
+    ):
         super().__init__(args)
-        
+
         self.args = args
         self.prune_ratio = prune_ratio
         self.finetune_epoch = finetune_epoch
@@ -53,27 +59,39 @@ class FP(BackdoorDefense):
                 self.prune_layer: str = name
                 break
         else:
-            raise Exception('There is no Conv2d in model.')
+            raise Exception("There is no Conv2d in model.")
         length = last_conv.out_channels
         self.prune_num = int(length * self.prune_ratio)
-        self.folder_path = 'other_defenses_tool_box/results/FP'
+        self.folder_path = "other_defenses_tool_box/results/FP"
         if not os.path.exists(self.folder_path):
             os.mkdir(self.folder_path)
-        self.valid_loader = generate_dataloader(dataset=self.dataset,
-                                    dataset_path=config.data_dir,
-                                    batch_size=100,
-                                    split='valid',
-                                    shuffle=True,
-                                    drop_last=False)
-        self.test_loader = generate_dataloader(dataset=self.dataset,
-                                               dataset_path=config.data_dir,
-                                               batch_size=100,
-                                               split='test',
-                                               shuffle=False)
+        self.valid_loader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=100,
+            split="valid",
+            shuffle=True,
+            drop_last=False,
+        )
+        self.test_loader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=100,
+            split="test",
+            shuffle=False,
+        )
 
     def detect(self):
         # self.ori_clean_acc = val_atk(self.args, self.model)[0]
-        self.ori_clean_acc, _ = test(self.model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.poison_type))
+        self.ori_clean_acc, _ = test(
+            self.model,
+            test_loader=self.test_loader,
+            poison_test=True,
+            poison_transform=self.poison_transform,
+            num_classes=self.num_classes,
+            source_classes=self.source_classes,
+            all_to_all=("all_to_all" in self.args.poison_type),
+        )
         self.prune()
 
     def prune(self):
@@ -83,36 +101,71 @@ class FP(BackdoorDefense):
         #         break
         for name, module in list(self.model.module.named_modules()):
             if isinstance(module, nn.Linear):
-                self.last_conv: nn.Linear = prune.identity(module, 'weight')
+                self.last_conv: nn.Linear = prune.identity(module, "weight")
                 break
         length = self.last_conv.weight.shape[1]
         print(length)
 
         mask: torch.Tensor = self.last_conv.weight_mask
-        
+
         assert self.prune_num >= self.finetune_epoch, "prune_ratio too small!"
         self.prune_step(mask, prune_num=max(self.prune_num - self.finetune_epoch, 0))
         # val_atk(self.args, self.model)
-        test(self.model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+        test(
+            self.model,
+            test_loader=self.test_loader,
+            poison_test=True,
+            poison_transform=self.poison_transform,
+            num_classes=self.num_classes,
+            source_classes=self.source_classes,
+            all_to_all=("all_to_all" in self.args.dataset),
+        )
 
         for i in range(min(self.finetune_epoch, length)):
-            print('\nIter: %d/%d' % (i + 1, min(self.finetune_epoch, length)))
+            print("\nIter: %d/%d" % (i + 1, min(self.finetune_epoch, length)))
             self.prune_step(mask, prune_num=1)
             # clean_acc = val_atk(self.args, self.model)[0]
-            clean_acc, _ = test(self.model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
-            if self.ori_clean_acc - clean_acc > self.max_allowed_acc_drop: # stop if accuracy drop too much
+            clean_acc, _ = test(
+                self.model,
+                test_loader=self.test_loader,
+                poison_test=True,
+                poison_transform=self.poison_transform,
+                num_classes=self.num_classes,
+                source_classes=self.source_classes,
+                all_to_all=("all_to_all" in self.args.dataset),
+            )
+            if (
+                self.ori_clean_acc - clean_acc > self.max_allowed_acc_drop
+            ):  # stop if accuracy drop too much
                 break
-        
+
         # test pruned model and save
-        result_file = os.path.join(self.folder_path, 'FP_%s.pt' % supervisor.get_dir_core(self.args, include_model_name=True, include_poison_seed=config.record_poison_seed))
+        result_file = os.path.join(
+            self.folder_path,
+            "FP_%s.pt"
+            % supervisor.get_dir_core(
+                self.args,
+                include_model_name=True,
+                include_poison_seed=config.record_poison_seed,
+            ),
+        )
         torch.save(self.model.module.state_dict(), result_file)
-        print('Fine-Pruned Model Saved at:', result_file)
+        print("Fine-Pruned Model Saved at:", result_file)
         # val_atk(self.args, self.model)
-        test(self.model, test_loader=self.test_loader, poison_test=True, poison_transform=self.poison_transform, num_classes=self.num_classes, source_classes=self.source_classes, all_to_all=('all_to_all' in self.args.dataset))
+        test(
+            self.model,
+            test_loader=self.test_loader,
+            poison_test=True,
+            poison_transform=self.poison_transform,
+            num_classes=self.num_classes,
+            source_classes=self.source_classes,
+            all_to_all=("all_to_all" in self.args.dataset),
+        )
 
     @torch.no_grad()
     def prune_step(self, mask: torch.Tensor, prune_num: int = 1):
-        if prune_num <= 0: return
+        if prune_num <= 0:
+            return
         feats_list = []
         for _input, _label in self.valid_loader:
             _input, _label = _input.cuda(), _label.cuda()
@@ -130,6 +183,8 @@ class FP(BackdoorDefense):
             if mask[:, idx].norm(p=1) > 1e-6:
                 mask[:, idx] = 0.0
                 counter += 1
-                print(f'[{counter}/{prune_num}] Pruned channel id {idx}/{len(idx_rank)}')
+                print(
+                    f"[{counter}/{prune_num}] Pruned channel id {idx}/{len(idx_rank)}"
+                )
                 if counter >= min(prune_num, len(idx_rank)):
                     break

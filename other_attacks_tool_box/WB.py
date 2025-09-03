@@ -14,6 +14,7 @@ import os
 WB attack: https://proceedings.neurips.cc/paper/2021/file/9d99197e2ebf03fc388d09f1e94af89b-Paper.pdf
 """
 
+
 class attacker(BackdoorAttack):
 
     def __init__(self, args, mode="all2one", alpha=0.8, beta=0.2):
@@ -22,7 +23,7 @@ class attacker(BackdoorAttack):
         self.mode = mode
         self.alpha = alpha
         self.beta = beta
-        if args.dataset == 'cifar10':
+        if args.dataset == "cifar10":
             self.num_classes = 10
             self.momentum = 0.9
             self.weight_decay = 1e-4
@@ -34,40 +35,49 @@ class attacker(BackdoorAttack):
         else:
             raise NotImplementedError()
 
-        self.train_loader = generate_dataloader(dataset=self.dataset,
-                                                dataset_path=config.data_dir,
-                                                batch_size=self.batch_size,
-                                                split='train',
-                                                shuffle=True,
-                                                drop_last=False,
-                                                data_transform=self.data_transform_aug,
-                                                )
-        self.test_loader = generate_dataloader(dataset=self.dataset,
-                                               dataset_path=config.data_dir,
-                                               batch_size=100,
-                                               split='full_test',
-                                               shuffle=False,
-                                               drop_last=False,
-                                               data_transform=self.data_transform,
-                                               )
+        self.train_loader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=self.batch_size,
+            split="train",
+            shuffle=True,
+            drop_last=False,
+            data_transform=self.data_transform_aug,
+        )
+        self.test_loader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=100,
+            split="full_test",
+            shuffle=False,
+            drop_last=False,
+            data_transform=self.data_transform,
+        )
 
-        self.optimizer = torch.optim.SGD(self.model.parameters(), self.learning_rate, momentum=self.momentum,
-                                         weight_decay=self.weight_decay)
+        self.optimizer = torch.optim.SGD(
+            self.model.parameters(),
+            self.learning_rate,
+            momentum=self.momentum,
+            weight_decay=self.weight_decay,
+        )
 
-        self.poison_transform = supervisor.get_poison_transform(poison_type=args.poison_type, dataset_name=args.dataset,
-                                                                target_class=config.target_class[args.dataset],
-                                                                trigger_transform=self.data_transform,
-                                                                is_normalized_input=True,
-                                                                args=args)
+        self.poison_transform = supervisor.get_poison_transform(
+            poison_type=args.poison_type,
+            dataset_name=args.dataset,
+            target_class=config.target_class[args.dataset],
+            trigger_transform=self.data_transform,
+            is_normalized_input=True,
+            args=args,
+        )
         self.criterion_CE = torch.nn.CrossEntropyLoss()
-        self.folder_path = 'other_attacks_tool_box/results/WB'
+        self.folder_path = "other_attacks_tool_box/results/WB"
         if not os.path.exists(self.folder_path):
             os.makedirs(self.folder_path)
 
     def attack(self):
         save_path = supervisor.get_model_dir(self.args)
         print(f"Will save to {save_path}")
-        
+
         self.model.cuda()
 
         # training the model and the trigger generator function
@@ -80,16 +90,24 @@ class attacker(BackdoorAttack):
                         self.optimizer.zero_grad()
                         inputs, targets = inputs.cuda(), targets.cuda()
                         with torch.no_grad():
-                            transformed_inputs, transformed_targets = self.poison_transform.transform(inputs, targets)
+                            transformed_inputs, transformed_targets = (
+                                self.poison_transform.transform(inputs, targets)
+                            )
                         output, clean_feature = self.model(inputs, return_hidden=True)
-                        transformed_output, transformed_feature = self.model(transformed_inputs, return_hidden=True)
+                        transformed_output, transformed_feature = self.model(
+                            transformed_inputs, return_hidden=True
+                        )
                         loss_normal = self.criterion_CE(output, targets)
-                        loss_poison = self.criterion_CE(transformed_output, transformed_targets)
+                        loss_poison = self.criterion_CE(
+                            transformed_output, transformed_targets
+                        )
                         loss = self.alpha * loss_normal + self.beta * loss_poison
                         if not idx % 10:
                             print(
-                                "Alternative Truing (model) ---- Epoch {} - Step {}: Loss --- {}".format(epoch, idx,
-                                                                                                         loss))
+                                "Alternative Truing (model) ---- Epoch {} - Step {}: Loss --- {}".format(
+                                    epoch, idx, loss
+                                )
+                            )
                         loss.backward()
                         self.optimizer.step()
                 else:
@@ -100,21 +118,36 @@ class attacker(BackdoorAttack):
                     self.optimizer.zero_grad()
                     inputs, targets = inputs.cuda(), targets.cuda()
                     with torch.no_grad():
-                        transformed_inputs, transformed_targets = self.poison_transform.transform(inputs, targets)
+                        transformed_inputs, transformed_targets = (
+                            self.poison_transform.transform(inputs, targets)
+                        )
                     output, clean_feature = self.model(inputs, return_hidden=True)
-                    transformed_output, transformed_feature = self.model(transformed_inputs, return_hidden=True)
+                    transformed_output, transformed_feature = self.model(
+                        transformed_inputs, return_hidden=True
+                    )
                     loss_normal = self.criterion_CE(output, targets)
-                    loss_poison = self.criterion_CE(transformed_output, transformed_targets)
+                    loss_poison = self.criterion_CE(
+                        transformed_output, transformed_targets
+                    )
                     loss = self.alpha * loss_normal + self.beta * loss_poison
                     if not idx % 10:
-                        print("Inject Backdoor ---- Epoch {} - Step {}: Loss --- {}".format(epoch, idx, loss))
+                        print(
+                            "Inject Backdoor ---- Epoch {} - Step {}: Loss --- {}".format(
+                                epoch, idx, loss
+                            )
+                        )
                     loss.backward()
                     self.optimizer.step()
 
             # test the ASR
             print("In epoch {}  ---  The ASR ---".format(epoch))
-            test(self.model, self.test_loader, poison_test=True, poison_transform=self.poison_transform)
-            
+            test(
+                self.model,
+                self.test_loader,
+                poison_test=True,
+                poison_transform=self.poison_transform,
+            )
+
         save_path = supervisor.get_model_dir(self.args)
         print(f"Saved to {save_path}")
         torch.save(self.model.module.state_dict(), save_path)
@@ -168,12 +201,18 @@ class poison_transform:
             inputs, targets = inputs.cuda(), targets.cuda()
             transformed_inputs, transformed_targets = self.transform(inputs, targets)
             output, clean_feature = cls_model(inputs, return_hidden=True)
-            transformed_output, transformed_feature = cls_model(transformed_inputs, return_hidden=True)
-            weight_tensor = cls_model.state_dict()['module.linear.weight']
+            transformed_output, transformed_feature = cls_model(
+                transformed_inputs, return_hidden=True
+            )
+            weight_tensor = cls_model.state_dict()["module.linear.weight"]
             loss_DSWD = self.DSWD_dis(clean_feature, transformed_feature, weight_tensor)
             loss_poison = self.criterion_CE(transformed_output, transformed_targets)
             loss = loss_poison + loss_DSWD
             if not idx % 10:
-                print("Alternative Truing (Trigger) ---- Epoch {} - Step {}: Loss --- {}".format(epoch, idx, loss))
+                print(
+                    "Alternative Truing (Trigger) ---- Epoch {} - Step {}: Loss --- {}".format(
+                        epoch, idx, loss
+                    )
+                )
             loss.backward()
             self.optimizer.step()

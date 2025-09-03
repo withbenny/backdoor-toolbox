@@ -1,8 +1,14 @@
 from tensorflow.compat.v1.keras.models import Sequential
-from tensorflow.compat.v1.keras.layers import Dense, Activation, Flatten, Dropout, BatchNormalization
+from tensorflow.compat.v1.keras.layers import (
+    Dense,
+    Activation,
+    Flatten,
+    Dropout,
+    BatchNormalization,
+)
 from tensorflow.compat.v1.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.compat.v1.keras import regularizers
-from tensorflow.compat.v1.keras.optimizers import Adam,Adadelta
+from tensorflow.compat.v1.keras.optimizers import Adam, Adadelta
 import numpy as np
 import tensorflow.compat.v1 as tf
 
@@ -23,11 +29,13 @@ import torchvision
 # import albumentations
 from scipy.fftpack import dct, idct
 
-def dct2 (block):
-    return dct(dct(block.T, norm = 'ortho').T, norm = 'ortho')
+
+def dct2(block):
+    return dct(dct(block.T, norm="ortho").T, norm="ortho")
+
 
 def idct2(block):
-    return idct(idct(block.T, norm = 'ortho').T, norm = 'ortho')
+    return idct(idct(block.T, norm="ortho").T, norm="ortho")
 
 
 cfg = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
@@ -83,76 +91,130 @@ sess = tf.Session(config=cfg)
 #     sys.stderr = ferr
 
 
-
-class Frequency():
+class Frequency:
     def __init__(self, args):
 
         self.args = args
-        
-        #Simple 6-layer CNN 
+
+        # Simple 6-layer CNN
         weight_decay = 1e-4
         num_classes = 2
         model = Sequential()
-        model.add(Conv2D(32, (3,3), padding='same', kernel_regularizer=regularizers.l2(weight_decay), input_shape=(32, 32, 3)))
-        model.add(Activation('elu'))
+        model.add(
+            Conv2D(
+                32,
+                (3, 3),
+                padding="same",
+                kernel_regularizer=regularizers.l2(weight_decay),
+                input_shape=(32, 32, 3),
+            )
+        )
+        model.add(Activation("elu"))
         model.add(BatchNormalization())
-        model.add(Conv2D(32, (3,3), padding='same', kernel_regularizer=regularizers.l2(weight_decay)))
-        model.add(Activation('elu'))
+        model.add(
+            Conv2D(
+                32,
+                (3, 3),
+                padding="same",
+                kernel_regularizer=regularizers.l2(weight_decay),
+            )
+        )
+        model.add(Activation("elu"))
         model.add(BatchNormalization())
-        model.add(MaxPooling2D(pool_size=(2,2)))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.2))
 
-        model.add(Conv2D(64, (3,3), padding='same', kernel_regularizer=regularizers.l2(weight_decay)))
-        model.add(Activation('elu'))
+        model.add(
+            Conv2D(
+                64,
+                (3, 3),
+                padding="same",
+                kernel_regularizer=regularizers.l2(weight_decay),
+            )
+        )
+        model.add(Activation("elu"))
         model.add(BatchNormalization())
-        model.add(Conv2D(64, (3,3), padding='same', kernel_regularizer=regularizers.l2(weight_decay)))
-        model.add(Activation('elu'))
+        model.add(
+            Conv2D(
+                64,
+                (3, 3),
+                padding="same",
+                kernel_regularizer=regularizers.l2(weight_decay),
+            )
+        )
+        model.add(Activation("elu"))
         model.add(BatchNormalization())
-        model.add(MaxPooling2D(pool_size=(2,2)))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.3))
 
-        model.add(Conv2D(128, (3,3), padding='same', kernel_regularizer=regularizers.l2(weight_decay)))
-        model.add(Activation('elu'))
+        model.add(
+            Conv2D(
+                128,
+                (3, 3),
+                padding="same",
+                kernel_regularizer=regularizers.l2(weight_decay),
+            )
+        )
+        model.add(Activation("elu"))
         model.add(BatchNormalization())
-        model.add(Conv2D(128, (3,3), padding='same', kernel_regularizer=regularizers.l2(weight_decay),name='last_conv'))
-        model.add(Activation('elu'))
+        model.add(
+            Conv2D(
+                128,
+                (3, 3),
+                padding="same",
+                kernel_regularizer=regularizers.l2(weight_decay),
+                name="last_conv",
+            )
+        )
+        model.add(Activation("elu"))
         model.add(BatchNormalization())
-        model.add(MaxPooling2D(pool_size=(2,2)))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(Dropout(0.4))
 
         model.add(Flatten())
-        model.add(Dense(num_classes, activation='softmax',name='dense'))
+        model.add(Dense(num_classes, activation="softmax", name="dense"))
 
         # model.summary()
 
-
         # model.load_weights('models/Tuned_CIFAR10.h5py')
-        model.load_weights('models/6_CNN_CIF1R10.h5py')
-        opt = Adadelta(lr = 0.05)
-        model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
-        
+        model.load_weights("models/6_CNN_CIF1R10.h5py")
+        opt = Adadelta(lr=0.05)
+        model.compile(
+            loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"]
+        )
+
         self.model = model
-        
+
     def cleanse(self):
         args = self.args
-        
+
         # Poisoned train set
-        poison_set_dir, poisoned_set_loader, poison_indices, _ = unpack_poisoned_train_set(args, shuffle=False, batch_size=100, data_transform=torchvision.transforms.ToTensor())
-        clean_indices = list(set(list(range(len(poisoned_set_loader.dataset)))) - set(poison_indices))
+        poison_set_dir, poisoned_set_loader, poison_indices, _ = (
+            unpack_poisoned_train_set(
+                args,
+                shuffle=False,
+                batch_size=100,
+                data_transform=torchvision.transforms.ToTensor(),
+            )
+        )
+        clean_indices = list(
+            set(list(range(len(poisoned_set_loader.dataset)))) - set(poison_indices)
+        )
         # ground_truths = np.ones(len(poisoned_set_loader.dataset))
         # ground_truths[clean_indices] = 0
         # ground_truths = np.squeeze(np.eye(2)[ground_truths.astype(np.int)])
 
-
         preds = []
-        
+
         for i, (_input, _label) in enumerate(tqdm(poisoned_set_loader)):
             _input = _input.permute((0, 2, 3, 1)).numpy()
             # print(_input)
             # exit()
             for i in range(len(_input)):
                 for channel in range(3):
-                    _input[i, :, :, channel] = dct2((_input[i, :, :, channel]*255).astype(np.uint8))
+                    _input[i, :, :, channel] = dct2(
+                        (_input[i, :, :, channel] * 255).astype(np.uint8)
+                    )
             # print(_input)
             # exit()
             output = self.model(_input)
@@ -161,23 +223,24 @@ class Frequency():
             # print(pred)
             # exit()
             # self.model.evaluate(_input, ground_truths[i * 100 : (i + 1) * 100], batch_size=100)
-        
+
         preds = tf.concat(preds, axis=0).numpy().tolist()
-        
+
         suspicious_indices = []
         for i in range(len(preds)):
-            if preds[i] == 1: suspicious_indices.append(i)
-        
+            if preds[i] == 1:
+                suspicious_indices.append(i)
+
         return suspicious_indices
-        
-        
+
 
 def cleanser(args):
-    
+
     worker = Frequency(args)
     suspicious_indices = worker.cleanse()
 
     return suspicious_indices
+
 
 # if __name__ == '__main__':
 #     suspicious_indices = cleanser(args)

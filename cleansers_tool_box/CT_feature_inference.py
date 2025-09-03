@@ -3,6 +3,7 @@ from tqdm import tqdm
 import numpy as np
 import torch
 
+
 def get_features(data_loader, model):
 
     class_indices = []
@@ -23,21 +24,24 @@ def get_features(data_loader, model):
 
     return feats, class_indices, preds_list
 
+
 def cleanser(inspection_set, clean_set, model, num_classes):
 
-    kwargs = {'num_workers': 4, 'pin_memory': True}
+    kwargs = {"num_workers": 4, "pin_memory": True}
 
     # main dataset we aim to cleanse
     inspection_split_loader = torch.utils.data.DataLoader(
-        inspection_set,
-        batch_size=128, shuffle=False, **kwargs)
+        inspection_set, batch_size=128, shuffle=False, **kwargs
+    )
 
     # a small clean batch for defensive purpose
     clean_set_loader = torch.utils.data.DataLoader(
-        clean_set,
-        batch_size=128, shuffle=True, **kwargs)
+        clean_set, batch_size=128, shuffle=True, **kwargs
+    )
 
-    feats_inspection, class_indices_inspection, preds_inspection = get_features(inspection_split_loader, model)
+    feats_inspection, class_indices_inspection, preds_inspection = get_features(
+        inspection_split_loader, model
+    )
     feats_clean, class_indices_clean, _ = get_features(clean_set_loader, model)
 
     feats_inspection = np.array(feats_inspection)
@@ -46,7 +50,6 @@ def cleanser(inspection_set, clean_set, model, num_classes):
 
     feats_clean = np.array(feats_clean)
     class_indices_clean = np.array(class_indices_clean)
-
 
     scan = SCAn()
 
@@ -59,7 +62,9 @@ def cleanser(inspection_set, clean_set, model, num_classes):
     class_indices_all = np.concatenate([class_indices_inspection, class_indices_clean])
 
     # use the global model to divide samples
-    lc_model = scan.build_local_model(feats_all, class_indices_all, gb_model, num_classes)
+    lc_model = scan.build_local_model(
+        feats_all, class_indices_all, gb_model, num_classes
+    )
 
     # statistic test for the existence of "two clusters"
     score = scan.calc_final_score(lc_model)
@@ -69,11 +74,14 @@ def cleanser(inspection_set, clean_set, model, num_classes):
     num_samples = len(inspection_set)
 
     for target_class in range(num_classes):
-        print('[class-%d] outlier score = %f.' % (target_class, score[target_class]))
-        if score[target_class] <= threshold: continue # omit classes that pass the single-cluster test
+        print("[class-%d] outlier score = %f." % (target_class, score[target_class]))
+        if score[target_class] <= threshold:
+            continue  # omit classes that pass the single-cluster test
         for i in range(num_samples):
-            if class_indices_inspection[i] == target_class and preds_inspection[i] == target_class:
+            if (
+                class_indices_inspection[i] == target_class
+                and preds_inspection[i] == target_class
+            ):
                 suspicious_indices.append(i)
-
 
     return suspicious_indices

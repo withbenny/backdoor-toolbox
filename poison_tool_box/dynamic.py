@@ -5,15 +5,28 @@ from torchvision.utils import save_image
 from torch import nn
 from torchvision import transforms
 
-class poison_generator():
 
-    def __init__(self, ckpt_path, channel_init, steps, input_channel, normalizer, denormalizer,
-                 dataset, poison_rate, path, target_class=0, cuda_devices='0'):
+class poison_generator:
+
+    def __init__(
+        self,
+        ckpt_path,
+        channel_init,
+        steps,
+        input_channel,
+        normalizer,
+        denormalizer,
+        dataset,
+        poison_rate,
+        path,
+        target_class=0,
+        cuda_devices="0",
+    ):
 
         os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % cuda_devices
 
         # official pretrained pattern & mask generator model
-        state_dict = torch.load(ckpt_path)
+        state_dict = torch.load(ckpt_path, weights_only=False)
 
         self.dataset = dataset
         self.poison_rate = poison_rate
@@ -22,16 +35,27 @@ class poison_generator():
         self.denormalizer = denormalizer
         self.normalizer = normalizer
 
-        netG = Generator(channel_init=channel_init, steps=steps, input_channel=input_channel,
-                         normalizer=normalizer, denormalizer=denormalizer)
+        netG = Generator(
+            channel_init=channel_init,
+            steps=steps,
+            input_channel=input_channel,
+            normalizer=normalizer,
+            denormalizer=denormalizer,
+        )
         netG.load_state_dict(state_dict["netG"])
         netG.cuda()
         netG.eval()
         netG.requires_grad_(False)
         self.pattern_generator = netG
 
-        netM = Generator(channel_init=channel_init, steps=steps, input_channel=input_channel,
-                         normalizer=normalizer, denormalizer=denormalizer, out_channels=1)
+        netM = Generator(
+            channel_init=channel_init,
+            steps=steps,
+            input_channel=input_channel,
+            normalizer=normalizer,
+            denormalizer=denormalizer,
+            out_channels=1,
+        )
         netM.load_state_dict(state_dict["netM"])
         netM.cuda()
         netM.eval()
@@ -63,7 +87,9 @@ class poison_generator():
                 pattern = self.pattern_generator(inputs)
                 if self.normalizer is not None:
                     pattern = self.pattern_generator.normalize_pattern(pattern)
-                masks_output = self.mask_generator.threshold(self.mask_generator(inputs))
+                masks_output = self.mask_generator.threshold(
+                    self.mask_generator(inputs)
+                )
                 bd_inputs = inputs + (pattern - inputs) * masks_output
                 img = bd_inputs.detach().squeeze().cpu()
                 pt += 1
@@ -74,8 +100,8 @@ class poison_generator():
             # img_file_name = '%d.png' % i
             # img_file_path = os.path.join(self.path, img_file_name)
             # save_image(img, img_file_path)
-            #print('[Generate Poisoned Set] Save %s' % img_file_path)
-            
+            # print('[Generate Poisoned Set] Save %s' % img_file_path)
+
             img_set.append(img.unsqueeze(0))
             label_set.append(gt)
 
@@ -85,30 +111,51 @@ class poison_generator():
         return img_set, poison_indices, label_set
 
 
-class poison_transform():
-    def __init__(self, ckpt_path, channel_init, steps, input_channel, normalizer, denormalizer,
-                 target_class=0, has_normalized=False, require_normalization=True):
+class poison_transform:
+    def __init__(
+        self,
+        ckpt_path,
+        channel_init,
+        steps,
+        input_channel,
+        normalizer,
+        denormalizer,
+        target_class=0,
+        has_normalized=False,
+        require_normalization=True,
+    ):
 
         # marker : are input data normalized?
         self.has_normalized = has_normalized
         self.require_normalization = require_normalization
 
         # official pretrained pattern & mask generator model
-        state_dict = torch.load(ckpt_path)
+        state_dict = torch.load(ckpt_path, weights_only=False)
         self.target_class = target_class  # by default : target_class = 0
         self.denormalizer = denormalizer
         self.normalizer = normalizer
 
-        netG = Generator(channel_init=channel_init, steps=steps, input_channel=input_channel,
-                         normalizer=normalizer, denormalizer=denormalizer)
+        netG = Generator(
+            channel_init=channel_init,
+            steps=steps,
+            input_channel=input_channel,
+            normalizer=normalizer,
+            denormalizer=denormalizer,
+        )
         netG.load_state_dict(state_dict["netG"])
         netG = netG.cuda()
         netG.eval()
         netG.requires_grad_(False)
         self.pattern_generator = netG
 
-        netM = Generator(channel_init=channel_init, steps=steps, input_channel=input_channel,
-                         normalizer=normalizer, denormalizer=denormalizer, out_channels=1)
+        netM = Generator(
+            channel_init=channel_init,
+            steps=steps,
+            input_channel=input_channel,
+            normalizer=normalizer,
+            denormalizer=denormalizer,
+            out_channels=1,
+        )
         netM.load_state_dict(state_dict["netM"])
         netM = netM.cuda()
         netM.eval()
@@ -127,7 +174,7 @@ class poison_transform():
 
         # transform clean samples to poison samples
         labels[:] = self.target_class
-        
+
         pattern_generator = self.pattern_generator.to(data.device)
         mask_generator = self.mask_generator.to(data.device)
 
@@ -150,8 +197,15 @@ Dynamic Trigger Generator adapted from the official implementation
 
 
 class Generator(nn.Sequential):
-    def __init__(self, channel_init, steps, input_channel, normalizer,
-                 denormalizer, out_channels=None):
+    def __init__(
+        self,
+        channel_init,
+        steps,
+        input_channel,
+        normalizer,
+        denormalizer,
+        out_channels=None,
+    ):
 
         super(Generator, self).__init__()
 
@@ -159,8 +213,14 @@ class Generator(nn.Sequential):
         channel_next = channel_init
 
         for step in range(steps):
-            self.add_module("convblock_down_{}".format(2 * step), Conv2dBlock(channel_current, channel_next))
-            self.add_module("convblock_down_{}".format(2 * step + 1), Conv2dBlock(channel_next, channel_next))
+            self.add_module(
+                "convblock_down_{}".format(2 * step),
+                Conv2dBlock(channel_current, channel_next),
+            )
+            self.add_module(
+                "convblock_down_{}".format(2 * step + 1),
+                Conv2dBlock(channel_next, channel_next),
+            )
             self.add_module("downsample_{}".format(step), DownSampleBlock())
             if step < steps - 1:
                 channel_current = channel_next
@@ -172,13 +232,20 @@ class Generator(nn.Sequential):
         channel_next = channel_current // 2
         for step in range(steps):
             self.add_module("upsample_{}".format(step), UpSampleBlock())
-            self.add_module("convblock_up_{}".format(2 * step), Conv2dBlock(channel_current, channel_current))
+            self.add_module(
+                "convblock_up_{}".format(2 * step),
+                Conv2dBlock(channel_current, channel_current),
+            )
             if step == steps - 1:
                 self.add_module(
-                    "convblock_up_{}".format(2 * step + 1), Conv2dBlock(channel_current, channel_next, relu=False)
+                    "convblock_up_{}".format(2 * step + 1),
+                    Conv2dBlock(channel_current, channel_next, relu=False),
                 )
             else:
-                self.add_module("convblock_up_{}".format(2 * step + 1), Conv2dBlock(channel_current, channel_next))
+                self.add_module(
+                    "convblock_up_{}".format(2 * step + 1),
+                    Conv2dBlock(channel_current, channel_next),
+                )
             channel_current = channel_next
             channel_next = channel_next // 2
             if step == steps - 2:
@@ -212,11 +279,22 @@ class Generator(nn.Sequential):
 
 
 class Conv2dBlock(nn.Module):
-    def __init__(self, in_c, out_c, ker_size=(3, 3), stride=1, padding=1, batch_norm=True, relu=True):
+    def __init__(
+        self,
+        in_c,
+        out_c,
+        ker_size=(3, 3),
+        stride=1,
+        padding=1,
+        batch_norm=True,
+        relu=True,
+    ):
         super(Conv2dBlock, self).__init__()
         self.conv2d = nn.Conv2d(in_c, out_c, ker_size, stride, padding)
         if batch_norm:
-            self.batch_norm = nn.BatchNorm2d(out_c, eps=1e-5, momentum=0.05, affine=True)
+            self.batch_norm = nn.BatchNorm2d(
+                out_c, eps=1e-5, momentum=0.05, affine=True
+            )
         if relu:
             self.relu = nn.ReLU(inplace=True)
 
@@ -227,9 +305,13 @@ class Conv2dBlock(nn.Module):
 
 
 class DownSampleBlock(nn.Module):
-    def __init__(self, ker_size=(2, 2), stride=2, dilation=(1, 1), ceil_mode=False, p=0.0):
+    def __init__(
+        self, ker_size=(2, 2), stride=2, dilation=(1, 1), ceil_mode=False, p=0.0
+    ):
         super(DownSampleBlock, self).__init__()
-        self.maxpooling = nn.MaxPool2d(kernel_size=ker_size, stride=stride, dilation=dilation, ceil_mode=ceil_mode)
+        self.maxpooling = nn.MaxPool2d(
+            kernel_size=ker_size, stride=stride, dilation=dilation, ceil_mode=ceil_mode
+        )
         if p:
             self.dropout = nn.Dropout(p)
 
@@ -250,6 +332,3 @@ class UpSampleBlock(nn.Module):
         for module in self.children():
             x = module(x)
         return x
-
-
-

@@ -23,13 +23,13 @@ def random_label_generate(label_space, source_labels):
 
 
 class SEAM(BackdoorDefense):
-    name: str = 'SEAM'
+    name: str = "SEAM"
 
     def __init__(self, args, acc_for=None, acc_rec=0.97, epoch_for=10, epoch_rec=100):
         super().__init__(args)
         self.args = args
         if acc_for is None:
-            self.acc_for = min(2/self.num_classes, 0.6)
+            self.acc_for = min(2 / self.num_classes, 0.6)
         else:
             self.acc_for = acc_for
         self.acc_rec = acc_rec
@@ -37,30 +37,38 @@ class SEAM(BackdoorDefense):
         self.epoch_rec = epoch_rec
         # test set --- clean
         # std_test - > 10000 full, val -> 2000 (for detection), test -> 8000 (for accuracy)
-        self.train_loader = generate_dataloader(dataset=self.dataset,
-                                                dataset_path=config.data_dir,
-                                                batch_size=100,
-                                                split='train',
-                                                shuffle=False,
-                                                drop_last=False,
-                                                )
+        self.train_loader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=100,
+            split="train",
+            shuffle=False,
+            drop_last=False,
+        )
 
-        self.test_loader = generate_dataloader(dataset=self.dataset,
-                                               dataset_path=config.data_dir,
-                                               batch_size=100,
-                                               split='test',
-                                               shuffle=False,
-                                               drop_last=False,
-                                               )
+        self.test_loader = generate_dataloader(
+            dataset=self.dataset,
+            dataset_path=config.data_dir,
+            batch_size=100,
+            split="test",
+            shuffle=False,
+            drop_last=False,
+        )
 
         self.train_set = self.train_loader.dataset
         self.train_set_size = len(self.train_set)
-        forget_idx = random.sample(range(0, self.train_set_size), int(self.train_set_size * 0.01))
-        recovery_idx = random.sample(range(0, self.train_set_size), int(self.train_set_size * 0.1))
+        forget_idx = random.sample(
+            range(0, self.train_set_size), int(self.train_set_size * 0.01)
+        )
+        recovery_idx = random.sample(
+            range(0, self.train_set_size), int(self.train_set_size * 0.1)
+        )
         self.forget_set = Subset(self.train_set, forget_idx)
         self.forget_loader = DataLoader(self.forget_set, batch_size=32, shuffle=True)
         self.recovery_set = Subset(self.train_set, recovery_idx)
-        self.recovery_loader = DataLoader(self.recovery_set, batch_size=32, shuffle=True)
+        self.recovery_loader = DataLoader(
+            self.recovery_set, batch_size=32, shuffle=True
+        )
         self.criterion = torch.nn.CrossEntropyLoss().cuda()
 
     def detect(self):
@@ -69,9 +77,9 @@ class SEAM(BackdoorDefense):
         #                             momentum=0.9,
         #                             weight_decay=1e-4,
         #                             nesterov=True)
-        
+
         optimizer = torch.optim.Adam(self.model.module.parameters(), lr=0.001)
-                                    
+
         # forget set training
         for epoch in range(self.epoch_for):
             self.model.train()
@@ -88,10 +96,15 @@ class SEAM(BackdoorDefense):
 
             self.model.eval()
             acc = test(self.model, self.forget_loader)
-            test(self.model, self.test_loader, poison_test=True, poison_transform=self.poison_transform)
+            test(
+                self.model,
+                self.test_loader,
+                poison_test=True,
+                poison_transform=self.poison_transform,
+            )
             if acc[0] < self.acc_for:
                 break
-            
+
         optimizer = torch.optim.Adam(self.model.module.parameters(), lr=0.001)
         # optimizer = torch.optim.SGD(self.model.module.parameters(),
         #                             lr=0.05,
@@ -115,9 +128,19 @@ class SEAM(BackdoorDefense):
 
             self.model.eval()
             acc = test(self.model, self.recovery_loader)
-            test(self.model, self.test_loader, poison_test=True, poison_transform=self.poison_transform)
+            test(
+                self.model,
+                self.test_loader,
+                poison_test=True,
+                poison_transform=self.poison_transform,
+            )
             if acc[0] > self.acc_rec:
                 break
 
         print("Now starting the evaluation in test set.\n")
-        test(self.model, self.test_loader, poison_test=True, poison_transform=self.poison_transform)
+        test(
+            self.model,
+            self.test_loader,
+            poison_test=True,
+            poison_transform=self.poison_transform,
+        )

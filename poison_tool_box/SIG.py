@@ -4,24 +4,26 @@ import random
 from torchvision.utils import save_image
 import numpy as np
 
-class poison_generator():
 
-    def __init__(self, img_size, dataset, poison_rate, path, target_class = 0, delta=30/255, f=6):
+class poison_generator:
+
+    def __init__(
+        self, img_size, dataset, poison_rate, path, target_class=0, delta=30 / 255, f=6
+    ):
 
         self.img_size = img_size
         self.dataset = dataset
         self.poison_rate = poison_rate
         self.path = path  # path to save the dataset
-        self.target_class = target_class # by default : target_class = 0
+        self.target_class = target_class  # by default : target_class = 0
         self.delta = delta
         self.f = f
 
-        self.pattern = np.zeros([img_size,img_size], dtype=float)
+        self.pattern = np.zeros([img_size, img_size], dtype=float)
         for i in range(img_size):
             for j in range(img_size):
                 self.pattern[i, j] = delta * np.sin(2 * np.pi * j * f / img_size)
         self.pattern = torch.FloatTensor(self.pattern)
-
 
         # number of images
         self.num_img = len(dataset)
@@ -40,7 +42,7 @@ class poison_generator():
         num_poison = min(int(self.num_img * self.poison_rate), num_target)
 
         poison_indices = all_target_indices[:num_poison]
-        poison_indices.sort() # increasing order
+        poison_indices.sort()  # increasing order
 
         img_set = []
         label_set = []
@@ -50,14 +52,14 @@ class poison_generator():
 
             if pt < num_poison and poison_indices[pt] == i:
                 img = img + self.pattern
-                img = torch.clamp(img,0.0,1.0)
-                pt+=1
+                img = torch.clamp(img, 0.0, 1.0)
+                pt += 1
 
             # img_file_name = '%d.png' % i
             # img_file_path = os.path.join(self.path, img_file_name)
             # save_image(img, img_file_path)
-            #print('[Generate Poisoned Set] Save %s' % img_file_path)
-            
+            # print('[Generate Poisoned Set] Save %s' % img_file_path)
+
             img_set.append(img.unsqueeze(0))
             label_set.append(gt)
 
@@ -67,11 +69,18 @@ class poison_generator():
         return img_set, poison_indices, label_set
 
 
+class poison_transform:
 
-
-class poison_transform():
-
-    def __init__(self, img_size, denormalizer, normalizer, target_class = 0, delta=30/255, f=6, has_normalized=True):
+    def __init__(
+        self,
+        img_size,
+        denormalizer,
+        normalizer,
+        target_class=0,
+        delta=30 / 255,
+        f=6,
+        has_normalized=True,
+    ):
 
         self.img_size = img_size
         self.delta = delta

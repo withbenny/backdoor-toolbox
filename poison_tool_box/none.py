@@ -4,7 +4,8 @@ import random
 from torchvision.utils import save_image
 from config import poison_seed
 
-class poison_generator():
+
+class poison_generator:
 
     def __init__(self, img_size, dataset, path):
 
@@ -27,7 +28,7 @@ class poison_generator():
             # img_file_name = '%d.png' % i
             # img_file_path = os.path.join(self.path, img_file_name)
             # save_image(img, img_file_path)
-            
+
             img_set.append(img.unsqueeze(0))
             label_set.append(gt)
 
@@ -37,8 +38,7 @@ class poison_generator():
         return img_set, [], label_set
 
 
-
-class poison_transform():
+class poison_transform:
     def __init__(self):
         pass
 

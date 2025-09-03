@@ -22,13 +22,18 @@ class LinearBottleNeck(nn.Module):
             nn.Conv2d(in_channels, in_channels * t, 1),
             nn.BatchNorm2d(in_channels * t),
             nn.ReLU6(inplace=True),
-
-            nn.Conv2d(in_channels * t, in_channels * t, 3, stride=stride, padding=1, groups=in_channels * t),
+            nn.Conv2d(
+                in_channels * t,
+                in_channels * t,
+                3,
+                stride=stride,
+                padding=1,
+                groups=in_channels * t,
+            ),
             nn.BatchNorm2d(in_channels * t),
             nn.ReLU6(inplace=True),
-
             nn.Conv2d(in_channels * t, out_channels, 1),
-            nn.BatchNorm2d(out_channels)
+            nn.BatchNorm2d(out_channels),
         )
 
         self.stride = stride
@@ -44,18 +49,19 @@ class LinearBottleNeck(nn.Module):
 
         return residual
 
+
 class narrow_MobileNetV2(nn.Module):
 
     def __init__(self, class_num=1):
         super().__init__()
 
-        channel_cfg = [1, 2, 1, 2, 1, 2, 1, 2] # a narrower subnet
+        channel_cfg = [1, 2, 1, 2, 1, 2, 1, 2]  # a narrower subnet
         # channel_cfg = [2, 3, 2, 3, 2, 3, 2, 3] # a wider subnet
 
         self.pre = nn.Sequential(
             nn.Conv2d(3, channel_cfg[0], 1, padding=1),
             nn.BatchNorm2d(channel_cfg[0]),
-            nn.ReLU6(inplace=True)
+            nn.ReLU6(inplace=True),
         )
 
         self.stage1 = LinearBottleNeck(channel_cfg[0], channel_cfg[1], 1, 1)
@@ -67,9 +73,7 @@ class narrow_MobileNetV2(nn.Module):
         self.stage7 = LinearBottleNeck(channel_cfg[6], channel_cfg[7], 1, 1)
 
         self.conv1 = nn.Sequential(
-            nn.Conv2d(channel_cfg[7], 1, 1),
-            nn.BatchNorm2d(1),
-            nn.ReLU6(inplace=True)
+            nn.Conv2d(channel_cfg[7], 1, 1), nn.BatchNorm2d(1), nn.ReLU6(inplace=True)
         )
 
         # self.conv2 = nn.Conv2d(9, class_num, 1, bias=False) # no bias!!!
@@ -100,6 +104,7 @@ class narrow_MobileNetV2(nn.Module):
             repeat -= 1
 
         return nn.Sequential(*layers)
+
 
 def narrow_mobilenetv2():
     return narrow_MobileNetV2()

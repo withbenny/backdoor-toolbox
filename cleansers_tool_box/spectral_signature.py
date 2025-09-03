@@ -26,21 +26,22 @@ def get_features(data_loader, model, num_classes):
 
 def cleanser(inspection_set, model, num_classes, args):
     """
-        adapted from : https://github.com/hsouri/Sleeper-Agent/blob/master/forest/filtering_defenses.py
+    adapted from : https://github.com/hsouri/Sleeper-Agent/blob/master/forest/filtering_defenses.py
     """
 
-    kwargs = {'num_workers': 4, 'pin_memory': True}
+    kwargs = {"num_workers": 4, "pin_memory": True}
     inspection_split_loader = torch.utils.data.DataLoader(
-        inspection_set,
-        batch_size=128, shuffle=False, **kwargs)
+        inspection_set, batch_size=128, shuffle=False, **kwargs
+    )
 
     # Spectral Signature requires an expected poison ratio (we allow the oracle here as a baseline)
-    num_poisons_expected = args.poison_rate * len(inspection_set) * 1.5 # allow removing additional 50% (following the original paper)
+    num_poisons_expected = (
+        args.poison_rate * len(inspection_set) * 1.5
+    )  # allow removing additional 50% (following the original paper)
 
     feats, class_indices = get_features(inspection_split_loader, model, num_classes)
 
     suspicious_indices = []
-
 
     for i in range(num_classes):
 

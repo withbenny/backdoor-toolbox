@@ -37,7 +37,7 @@ class MaskedConv2d(nn.Conv2d):
 
     def exclude_mask(self):
         self.is_masked = False
-    
+
     def require_false(self):
         self.mask.requires_grad = False
         self.noise.requires_grad = False

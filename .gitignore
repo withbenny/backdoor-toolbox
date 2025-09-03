@@ -2,43 +2,43 @@
 
 assets/*
 !assets/backdoor-toolbox.gif
-!assets/.dummy
+!assets/.gitkeep
 
 data/cifar10/cifar*
 data/cifar10/clean_label/*
 !data/cifar10/clean_label/setup.sh
 data/gtsrb/*
-!data/gtsrb/.dummy
+!data/gtsrb/.gitkeep
 data/imagenette2/*
-!data/imagenette2/.dummy
+!data/imagenette2/.gitkeep
 data/VOCdevkit/*
-!data/VOCdevkit/.dummy
+!data/VOCdevkit/.gitkeep
 
 models/*
-!models/.dummy
+!models/.gitkeep
 !models/ISSBA_cifar10.pth
 !models/6_CNN_CIF1R10.h5py
 !models/*narrow*
 
 poisoned_train_set/*
-!poisoned_train_set/.dummy
+!poisoned_train_set/.gitkeep
 
 clean_set/cifar10/*
-!clean_set/cifar10/.dummy
+!clean_set/cifar10/.gitkeep
 clean_set/gtsrb/*
-!clean_set/gtsrb/.dummy
+!clean_set/gtsrb/.gitkeep
 clean_set/imagenette/*
-!clean_set/imagenette/.dummy
+!clean_set/imagenette/.gitkeep
 
 logs/*
-!logs/.dummy
+!logs/.gitkeep
 
 cleansers_tool_box/spectre/output/*
-!cleansers_tool_box/spectre/output/.dummy
+!cleansers_tool_box/spectre/output/.gitkeep
 
 other_defenses_tool_box/logs
 other_defenses_tool_box/results/*
-!other_defenses_tool_box/results/.dummy
+!other_defenses_tool_box/results/.gitkeep
 
 slurm_scripts/logs
 slurm-*.out

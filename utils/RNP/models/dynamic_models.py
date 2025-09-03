@@ -17,7 +17,9 @@ class Normalize:
     def __call__(self, x):
         x_clone = x.clone()
         for channel in range(self.n_channels):
-            x_clone[:, channel] = (x[:, channel] - self.expected_values[channel]) / self.variance[channel]
+            x_clone[:, channel] = (
+                x[:, channel] - self.expected_values[channel]
+            ) / self.variance[channel]
         return x_clone
 
 
@@ -31,7 +33,9 @@ class Denormalize:
     def __call__(self, x):
         x_clone = x.clone()
         for channel in range(self.n_channels):
-            x_clone[:, channel] = x[:, channel] * self.variance[channel] + self.expected_values[channel]
+            x_clone[:, channel] = (
+                x[:, channel] * self.variance[channel] + self.expected_values[channel]
+            )
         return x_clone
 
 
@@ -51,8 +55,14 @@ class Generator(nn.Sequential):
         channel_current = opt.input_channel
         channel_next = channel_init
         for step in range(steps):
-            self.add_module("convblock_down_{}".format(2 * step), Conv2dBlock(channel_current, channel_next))
-            self.add_module("convblock_down_{}".format(2 * step + 1), Conv2dBlock(channel_next, channel_next))
+            self.add_module(
+                "convblock_down_{}".format(2 * step),
+                Conv2dBlock(channel_current, channel_next),
+            )
+            self.add_module(
+                "convblock_down_{}".format(2 * step + 1),
+                Conv2dBlock(channel_next, channel_next),
+            )
             self.add_module("downsample_{}".format(step), DownSampleBlock())
             if step < steps - 1:
                 channel_current = channel_next
@@ -64,13 +74,20 @@ class Generator(nn.Sequential):
         channel_next = channel_current // 2
         for step in range(steps):
             self.add_module("upsample_{}".format(step), UpSampleBlock())
-            self.add_module("convblock_up_{}".format(2 * step), Conv2dBlock(channel_current, channel_current))
+            self.add_module(
+                "convblock_up_{}".format(2 * step),
+                Conv2dBlock(channel_current, channel_current),
+            )
             if step == steps - 1:
                 self.add_module(
-                    "convblock_up_{}".format(2 * step + 1), Conv2dBlock(channel_current, channel_next, relu=False)
+                    "convblock_up_{}".format(2 * step + 1),
+                    Conv2dBlock(channel_current, channel_next, relu=False),
                 )
             else:
-                self.add_module("convblock_up_{}".format(2 * step + 1), Conv2dBlock(channel_current, channel_next))
+                self.add_module(
+                    "convblock_up_{}".format(2 * step + 1),
+                    Conv2dBlock(channel_current, channel_next),
+                )
             channel_current = channel_next
             channel_next = channel_next // 2
             if step == steps - 2:
@@ -85,7 +102,9 @@ class Generator(nn.Sequential):
 
     def _get_denormalize(self, opt):
         if opt.dataset == "cifar10":
-            denormalizer = Denormalize(opt, [0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261])
+            denormalizer = Denormalize(
+                opt, [0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261]
+            )
         elif opt.dataset == "mnist":
             denormalizer = Denormalize(opt, [0.5], [0.5])
         elif opt.dataset == "gtsrb":

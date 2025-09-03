@@ -29,14 +29,25 @@ def get_trigger_mask(img_size, total_pieces, masked_pieces):
     for i in candidate_idx:
         x = int(i % div_num)  # column
         y = int(i // div_num)  # row
-        mask[x * step: (x + 1) * step, y * step: (y + 1) * step] = 0
+        mask[x * step : (x + 1) * step, y * step : (y + 1) * step] = 0
     return mask
 
 
-class poison_generator():
+class poison_generator:
 
-    def __init__(self, img_size, dataset, poison_rate, path, trigger, target_class=0, alpha=0.2, cover_rate=0.01,
-                 pieces=16, mask_rate=0.5):
+    def __init__(
+        self,
+        img_size,
+        dataset,
+        poison_rate,
+        path,
+        trigger,
+        target_class=0,
+        alpha=0.2,
+        cover_rate=0.01,
+        pieces=16,
+        mask_rate=0.5,
+    ):
 
         self.img_size = img_size
         self.dataset = dataset
@@ -65,7 +76,9 @@ class poison_generator():
         poison_indices.sort()  # increasing order
 
         num_cover = int(self.num_img * self.cover_rate)
-        cover_indices = id_set[num_poison:num_poison + num_cover]  # use **non-overlapping** images to cover
+        cover_indices = id_set[
+            num_poison : num_poison + num_cover
+        ]  # use **non-overlapping** images to cover
         cover_indices.sort()
 
         label_set = []
@@ -99,7 +112,7 @@ class poison_generator():
             # img_file_path = os.path.join(self.path, img_file_name)
             # save_image(img, img_file_path)
             # print('[Generate Poisoned Set] Save %s' % img_file_path)
-            
+
             img_set.append(img.unsqueeze(0))
             label_set.append(gt)
             cnt += 1
@@ -115,12 +128,12 @@ class poison_generator():
         img, gt = self.dataset[0]
         mask = get_trigger_mask(self.img_size, self.pieces, self.masked_pieces)
         img = img + self.alpha * mask * (self.trigger - img)
-        save_image(img, os.path.join(self.path, 'demo.png'))
+        save_image(img, os.path.join(self.path, "demo.png"))
 
         return img_set, poison_indices, cover_indices, label_set
 
 
-class poison_transform():
+class poison_transform:
 
     def __init__(self, img_size, trigger, target_class=0, alpha=0.2):
         self.img_size = img_size

@@ -50,15 +50,17 @@ class BeingRobust(EmpiricalCovariance):
     #array([[-1.6167..., -0.6431...], ...
     """
 
-    def __init__(self,
-                 eps: float = 0.1,
-                 tau: float = 0.1,
-                 cher: float = 2.5,
-                 use_randomized_svd: bool = True,
-                 debug: bool = False,
-                 assume_centered: bool = False,
-                 random_state: Union[int, np.random.RandomState] = None,
-                 keep_filtered: bool = False):
+    def __init__(
+        self,
+        eps: float = 0.1,
+        tau: float = 0.1,
+        cher: float = 2.5,
+        use_randomized_svd: bool = True,
+        debug: bool = False,
+        assume_centered: bool = False,
+        random_state: Union[int, np.random.RandomState] = None,
+        keep_filtered: bool = False,
+    ):
         super().__init__()
         self.eps = eps
         self.tau = tau
@@ -69,7 +71,7 @@ class BeingRobust(EmpiricalCovariance):
         self.assume_centered = assume_centered
         self.keep_filtered = keep_filtered
 
-    def fit(self, X, y=None) -> 'BeingRobust':
+    def fit(self, X, y=None) -> "BeingRobust":
         """Fits the data to obtain the robust estimate.
         Parameters
         ----------
@@ -82,31 +84,35 @@ class BeingRobust(EmpiricalCovariance):
         -------
         self : BeingRobust
         """
-        X = self._validate_data(X, ensure_min_samples=1, estimator='BeingRobust')
+        X = self._validate_data(X, ensure_min_samples=1, estimator="BeingRobust")
         random_state = check_random_state(self.random_state)
 
-        self.location_, X = filter_gaussian_mean(X,
-                                                 eps=self.eps,
-                                                 tau=self.tau,
-                                                 cher=self.cher,
-                                                 use_randomized_svd=self.use_randomized_svd,
-                                                 debug=self.debug,
-                                                 assume_centered=self.assume_centered,
-                                                 random_state=random_state)
+        self.location_, X = filter_gaussian_mean(
+            X,
+            eps=self.eps,
+            tau=self.tau,
+            cher=self.cher,
+            use_randomized_svd=self.use_randomized_svd,
+            debug=self.debug,
+            assume_centered=self.assume_centered,
+            random_state=random_state,
+        )
         if self.keep_filtered:
             self.filtered_ = X
 
         return self
 
 
-def filter_gaussian_mean(X: np.ndarray,
-                         eps: float = 0.1,
-                         tau: float = 0.1,
-                         cher: float = 2.5,
-                         use_randomized_svd: bool = True,
-                         debug: bool = False,
-                         assume_centered: bool = False,
-                         random_state: int = None) -> Tuple[float, np.ndarray]:
+def filter_gaussian_mean(
+    X: np.ndarray,
+    eps: float = 0.1,
+    tau: float = 0.1,
+    cher: float = 2.5,
+    use_randomized_svd: bool = True,
+    debug: bool = False,
+    assume_centered: bool = False,
+    random_state: int = None,
+) -> Tuple[float, np.ndarray]:
     """Being Robust (in High Dimensions) Can Be Practical: robust estimator of location (and potentially covariance).
     This estimator is to be applied on Gaussian-distributed data. For other distributions some changes might be
     required. Please check out the original paper and/or Matlab code.
@@ -142,22 +148,26 @@ def filter_gaussian_mean(X: np.ndarray,
         centered_X = (X - emp_mean) / np.sqrt(n_samples)
 
     if use_randomized_svd:
-        U, S, Vh = randomized_svd(centered_X.T, n_components=1, random_state=random_state)
+        U, S, Vh = randomized_svd(
+            centered_X.T, n_components=1, random_state=random_state
+        )
     else:
         U, S, Vh = np.linalg.svd(centered_X.T, full_matrices=False)
 
-    lambda_ = S[0]**2
+    lambda_ = S[0] ** 2
     v = U[:, 0]
 
     if debug:
-        print(f'\nRecursing on X of shape {X.shape}')
-        print(f'lambda_ < 1 + 3 * eps * np.log(1 / eps) -> {lambda_} < {1 + 3 * eps * np.log(1 / eps)}')
+        print(f"\nRecursing on X of shape {X.shape}")
+        print(
+            f"lambda_ < 1 + 3 * eps * np.log(1 / eps) -> {lambda_} < {1 + 3 * eps * np.log(1 / eps)}"
+        )
     if lambda_ < 1 + 3 * eps * np.log(1 / eps):
         return emp_mean, X
 
     delta = 2 * eps
     if debug:
-        print(f'delta={delta}')
+        print(f"delta={delta}")
 
     projected_X = X @ v
     med = np.median(projected_X)
@@ -168,24 +178,25 @@ def filter_gaussian_mean(X: np.ndarray,
     for i in range(n_samples):
         T = sorted_projected_X[i] - delta
         filter_crit_lhs = n_samples - i
-        filter_crit_rhs = cher * n_samples * \
-            erfc(T / np.sqrt(2)) / 2 + eps / (n_samples * np.log(n_samples * eps / tau))
+        filter_crit_rhs = cher * n_samples * erfc(T / np.sqrt(2)) / 2 + eps / (
+            n_samples * np.log(n_samples * eps / tau)
+        )
         if filter_crit_lhs > filter_crit_rhs:
             break
 
     if debug:
-        print(f'filter data at index {i}')
+        print(f"filter data at index {i}")
 
     if i == 0 or i == n_samples - 1:
         return emp_mean, X
 
     return filter_gaussian_mean(
-        X[sorted_projected_X_idx[:i + 1]],
+        X[sorted_projected_X_idx[: i + 1]],
         eps=eps,
         tau=tau,
         cher=cher,
         use_randomized_svd=use_randomized_svd,
         debug=debug,
         assume_centered=assume_centered,
-        random_state=random_state
+        random_state=random_state,
     )
