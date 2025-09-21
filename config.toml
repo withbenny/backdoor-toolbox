@@ -1,8 +1,8 @@
 [Trainer]
-dataset = "cifar10" # choices: cifar10, gtsrb, stl10, cifar100, tinyimagenet, imagenet100
-data_rate = 1.0 # the ratio of data used for training
+dataset = "cifar100" # choices: cifar10, gtsrb, stl10, cifar100, tinyimagenet, imagenet100
+data_rate = 1 # the ratio of data used for training
 poison_rate = 0.1 # the ratio of poisoned data in the training data
-num_models = 1
+num_models = 15
 
 [Trainer.WaNet]
 cover_rate = 0.1

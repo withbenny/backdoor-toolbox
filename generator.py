@@ -3,17 +3,20 @@ import os
 import time
 import tomllib
 
+def _has_image_files(root_dir, suffixes):
+    if not os.path.isdir(root_dir):
+        return False
+    for dirpath, _, filenames in os.walk(root_dir):
+        for filename in filenames:
+            if os.path.splitext(filename)[1].lower() in suffixes:
+                return True
+    return False
 
 def phase1(dataset):
     clean_set_dir = f"./clean_set/{dataset}"
     image_suffix = {".png", ".jpg", ".jpeg"}
-    image_files = [
-        f
-        for f in os.listdir(clean_set_dir)
-        if os.path.splitext(f)[1].lower() in image_suffix
-    ]
     print(f"=== Running Phase 1 ===")
-    if not image_files:
+    if not _has_image_files(clean_set_dir, image_suffix):
         subprocess.run(
             [
                 "python",
@@ -110,7 +113,7 @@ def main():
     with open("config.toml", "rb") as f:
         cfg = tomllib.load(f)
     poison_types = [
-        "none"
+        "blend"
     ]  # choices: none, badnet, "badnet", "blend", "trojan", "SIG", "dynamic", "ISSBA", "WaNet", "TaCT", "adaptive_blend", "adaptive_patch"
     for poison_type in poison_types:
         print(f"=== Running for poison_type: {poison_type} ===")

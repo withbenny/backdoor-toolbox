@@ -11,8 +11,16 @@ data/gtsrb/*
 !data/gtsrb/.gitkeep
 data/imagenette2/*
 !data/imagenette2/.gitkeep
+data/imagenette/*
+!data/imagenette/.gitkeep
 data/VOCdevkit/*
 !data/VOCdevkit/.gitkeep
+data/cifar100/*
+!data/cifar100/.gitkeep
+data/tinyimagenet/*
+!data/tinyimagenet/.gitkeep
+data/stl10/*
+!data/stl10/.gitkeep
 
 models/*
 !models/.gitkeep
@@ -29,6 +37,12 @@ clean_set/gtsrb/*
 !clean_set/gtsrb/.gitkeep
 clean_set/imagenette/*
 !clean_set/imagenette/.gitkeep
+clean_set/tinyimagenet/*
+!clean_set/tinyimagenet/.gitkeep
+clean_set/cifar100/*
+!clean_set/cifar100/.gitkeep
+clean_set/imagenet100/*
+!clean_set/imagenet100/.gitkeep
 
 logs/*
 !logs/.gitkeep
