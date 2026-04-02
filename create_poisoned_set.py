@@ -164,7 +164,7 @@ if args.poison_type == "dynamic":
         )
         img_size = 32
         num_classes = 10
-        channel_init = 32s
+        channel_init = 32
         steps = 3
         input_channel = 3
 
