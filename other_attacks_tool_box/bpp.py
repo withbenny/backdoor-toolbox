@@ -18,6 +18,7 @@ class attacker(BackdoorAttack):
         super().__init__(args)
 
         self.args = args
+        self.train_source = supervisor.normalize_train_source(args.train_source)
         self.mode = mode
         self.dithering = dithering
         self.squeeze_num = squeeze_num
@@ -46,6 +47,7 @@ class attacker(BackdoorAttack):
         else:
             raise NotImplementedError()
 
+        test_split = "test" if self.train_source == "test" else "full_test"
         self.train_loader = generate_dataloader(
             dataset=self.dataset,
             dataset_path=config.data_dir,
@@ -54,12 +56,15 @@ class attacker(BackdoorAttack):
             shuffle=True,
             drop_last=False,
             data_transform=self.data_transform_aug,
+            train_source=self.train_source,
+            clean_budget=args.clean_budget,
+            data_rate=args.data_rate,
         )
         self.test_loader = generate_dataloader(
             dataset=self.dataset,
             dataset_path=config.data_dir,
             batch_size=100,
-            split="full_test",
+            split=test_split,
             shuffle=False,
             drop_last=False,
             data_transform=self.data_transform,
@@ -88,17 +93,22 @@ class attacker(BackdoorAttack):
         return self.normalizer(data / 255.0)
 
     def attack(self):
-        self.model.cuda()
+        self.model.to(self.device)
         residual_list_train = []
+        residual_tag = (
+            f"{self.args.dataset}_train_source={self.train_source}"
+            f"_data_rate={self.args.data_rate}"
+            f"_clean_budget={self.args.clean_budget}"
+        )
         save_path = os.path.join(
-            self.folder_path, f"{self.args.dataset}_residual_list_train"
+            self.folder_path, f"{residual_tag}_residual_list_train"
         )
         if os.path.exists(save_path):
-            residual_list_train = torch.load(save_path)
+            residual_list_train = torch.load(save_path, map_location=self.device)
         else:
             for _ in range(1):
                 for inputs, targets in tqdm(self.train_loader):
-                    inputs = inputs.cuda()
+                    inputs = inputs.to(self.device)
                     temp_negetive = self.back_to_img(inputs)
 
                     temp_negetive_modified = copy.deepcopy(temp_negetive)
@@ -119,7 +129,9 @@ class attacker(BackdoorAttack):
 
                     residual = temp_negetive_modified - temp_negetive
                     for i in range(residual.shape[0]):
-                        residual_list_train.append(residual[i].unsqueeze(0).cuda())
+                        residual_list_train.append(
+                            residual[i].unsqueeze(0).to(self.device)
+                        )
             torch.save(residual_list_train, save_path)
         for epoch in range(self.epochs):
             self.model.train()
@@ -132,15 +144,13 @@ class attacker(BackdoorAttack):
 
             for inputs, targets in tqdm(self.train_loader):
                 self.optimizer.zero_grad()
-                inputs, targets = inputs.cuda(), targets.cuda()
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
                 bs = inputs.shape[0]
                 num_bd = int(bs * self.injection_rate)
                 num_neg = int(bs * self.injection_rate)
                 inputs_bd = self.back_to_img(inputs[:num_bd])
                 if self.dithering:
-                    inputs_bd = torch.round(
-                        floydDitherspeed(inputs_bd, float(self.squeeze_num)).cuda()
-                    )
+                    inputs_bd = torch.round(floydDitherspeed(inputs_bd, float(self.squeeze_num)))
                 else:
                     inputs_bd = (
                         torch.round(inputs_bd / 255.0 * (self.squeeze_num - 1))
@@ -201,11 +211,13 @@ class attacker(BackdoorAttack):
                     poison_transform=self.poison_transform,
                     num_classes=self.num_classes,
                 )
+                model_to_save = self.model.module if hasattr(self.model, "module") else self.model
                 torch.save(
-                    self.model.module.state_dict(), supervisor.get_model_dir(self.args)
+                    model_to_save.state_dict(), supervisor.get_model_dir(self.args)
                 )
 
-        torch.save(self.model.module.state_dict(), supervisor.get_model_dir(self.args))
+        model_to_save = self.model.module if hasattr(self.model, "module") else self.model
+        torch.save(model_to_save.state_dict(), supervisor.get_model_dir(self.args))
 
 
 def rnd1(x, decimals, out):
@@ -240,7 +252,7 @@ def floydDitherspeed(image, squeeze_num):
         for x in range(w):
             old = image[:, :, y, x]
             # temp = np.empty_like(old).astype(np.float64)
-            temp = torch.empty_like(old).to(torch.double).cuda()
+            temp = torch.empty_like(old, dtype=torch.double, device=image.device)
             new = (
                 rnd1(old / 255.0 * (squeeze_num - 1), 0, temp) / (squeeze_num - 1) * 255
             )
@@ -287,7 +299,7 @@ class poison_transform:
 
         data = self.denormalizer(data) * 255
         if self.dithering:
-            data = torch.round(floydDitherspeed(data, float(self.squeeze_num)).cuda())
+            data = torch.round(floydDitherspeed(data, float(self.squeeze_num)))
         else:
             data = (
                 torch.round(data / 255.0 * (self.squeeze_num - 1))

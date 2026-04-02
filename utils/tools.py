@@ -176,6 +176,7 @@ def test(
 ):
 
     model.eval()
+    device = next(model.parameters()).device
     clean_correct = 0
     poison_correct = 0
     non_source_classified_as_target = 0
@@ -190,7 +191,7 @@ def test(
     with torch.no_grad():
         for data, target in tqdm(test_loader):
 
-            data, target = data.cuda(), target.cuda()
+            data, target = data.to(device), target.to(device)
             clean_output = model(data)
             clean_pred = clean_output.argmax(dim=1)
             clean_correct += clean_pred.eq(target).sum().item()
@@ -262,6 +263,7 @@ def test(
 def test_imagenet(model, test_loader, test_backdoor_loader=None):
 
     model.eval()
+    device = next(model.parameters()).device
     clean_top1 = 0
     clean_top5 = 0
     tot = 0
@@ -269,7 +271,7 @@ def test_imagenet(model, test_loader, test_backdoor_loader=None):
     with torch.no_grad():
         for data, target in tqdm(test_loader):
 
-            data, target = data.cuda(), target.cuda()
+            data, target = data.to(device), target.to(device)
             clean_output = model(data)
             _, clean_pred = torch.topk(clean_output, 5, dim=1)
 
@@ -302,7 +304,7 @@ def test_imagenet(model, test_loader, test_backdoor_loader=None):
         with torch.no_grad():
             for data, target in tqdm(test_backdoor_loader):
 
-                data, target = data.cuda(), target.cuda()
+                data, target = data.to(device), target.to(device)
                 adv_output = model(data)
                 _, adv_pred = torch.topk(adv_output, 5, dim=1)
 
@@ -328,11 +330,12 @@ def test_imagenet(model, test_loader, test_backdoor_loader=None):
 
 def test_ember(model, test_loader, backdoor_test_loader):
     model.eval()
+    device = next(model.parameters()).device
     clean_correct = 0
     tot = 0
     with torch.no_grad():
         for data, target in test_loader:
-            data, target = data.cuda(), target.cuda()
+            data, target = data.to(device), target.to(device)
             clean_output = model(data)
             clean_pred = (clean_output >= 0.5).long()
             clean_correct += clean_pred.eq(target).sum().item()
@@ -344,7 +347,7 @@ def test_ember(model, test_loader, backdoor_test_loader):
     tot = 0
     with torch.no_grad():
         for data in backdoor_test_loader:
-            data = data.cuda()
+            data = data.to(device)
             adv_output = model(data)
             adv_correct += (adv_output >= 0.5).sum()
             tot += data.shape[0]

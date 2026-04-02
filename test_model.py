@@ -65,6 +65,15 @@ parser.add_argument("-no_normalize", default=False, action="store_true")
 parser.add_argument("-no_aug", default=False, action="store_true")
 parser.add_argument("-devices", type=str, default="0")
 parser.add_argument("-seed", type=int, required=False, default=default_args.seed)
+parser.add_argument("-data_rate", type=float, required=False, default=1.0)
+parser.add_argument("-clean_budget", type=int, required=False, default=2000)
+parser.add_argument(
+    "-train_source",
+    type=str,
+    required=False,
+    default="train",
+    choices=["train", "test"],
+)
 args = parser.parse_args()
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices

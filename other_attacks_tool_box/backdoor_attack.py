@@ -61,7 +61,7 @@ class BackdoorAttack:
         self.alpha = args.alpha
         self.trigger = args.trigger
         self.target_class = config.target_class[args.dataset]
-        self.device = "cuda"
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # self.poison_transform = supervisor.get_poison_transform(poison_type=args.poison_type, dataset_name=args.dataset,
         #                                                     target_class=config.target_class[args.dataset], trigger_transform=self.data_transform,
@@ -73,7 +73,7 @@ class BackdoorAttack:
         trigger_path = os.path.join(config.triggers_dir, args.trigger)
         print("trigger_path:", trigger_path)
         self.trigger_mark = Image.open(trigger_path).convert("RGB")
-        self.trigger_mark = trigger_transform(self.trigger_mark).cuda()
+        self.trigger_mark = trigger_transform(self.trigger_mark).to(self.device)
 
         trigger_mask_path = os.path.join(config.triggers_dir, "mask_%s" % args.trigger)
         if os.path.exists(
@@ -83,13 +83,13 @@ class BackdoorAttack:
             self.trigger_mask = Image.open(trigger_mask_path).convert("RGB")
             self.trigger_mask = transforms.ToTensor()(self.trigger_mask)[
                 0
-            ].cuda()  # only use 1 channel
+            ].to(self.device)  # only use 1 channel
         else:  # by default, all black pixels are masked with 0's (not used)
             print("No trigger mask found! By default masking all black pixels...")
             self.trigger_mask = torch.logical_or(
                 torch.logical_or(self.trigger_mark[0] > 0, self.trigger_mark[1] > 0),
                 self.trigger_mark[2] > 0,
-            ).cuda()
+            ).to(self.device)
 
         self.poison_set_dir = supervisor.get_poison_set_dir(args)
         model_path = supervisor.get_model_dir(args)
@@ -98,11 +98,12 @@ class BackdoorAttack:
 
         print(model_path)
         if os.path.exists(model_path):
-            self.model.load_state_dict(torch.load(model_path))
+            self.model.load_state_dict(torch.load(model_path, map_location=self.device))
             print("Evaluating model '{}'...".format(model_path))
         else:
             print("Model '{}' not found.".format(model_path))
 
-        self.model = torch.nn.DataParallel(self.model)
-        self.model = self.model.cuda()
+        if torch.cuda.is_available():
+            self.model = torch.nn.DataParallel(self.model)
+        self.model = self.model.to(self.device)
         self.model.eval()

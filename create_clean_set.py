@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import torch
+import json
 from torchvision import datasets, transforms
 from torchvision.utils import save_image
 import argparse
@@ -161,6 +162,8 @@ root_dir = os.path.join(root_dir, args.dataset)
 if not os.path.exists(root_dir):
     os.mkdir(root_dir)
 
+meta_path = os.path.join(root_dir, "meta.json")
+
 clean_split_dir = os.path.join(
     root_dir, "clean_split"
 )  # clean samples at hand for defensive purpose
@@ -274,3 +277,6 @@ else:
         "[Generate Test Set] %s, %s"
         % (os.path.join(test_split_dir, "X"), os.path.join(test_split_dir, "Y"))
     )
+
+with open(meta_path, "w", encoding="utf-8") as f:
+    json.dump({"dataset": args.dataset, "clean_budget": args.clean_budget}, f, indent=2)

@@ -43,6 +43,14 @@ parser.add_argument(
 )
 parser.add_argument("-trigger", type=str, required=False, default=None)
 parser.add_argument("-data_rate", type=float, required=True, default=1.0)
+parser.add_argument("-clean_budget", type=int, required=False, default=2000)
+parser.add_argument(
+    "-train_source",
+    type=str,
+    required=False,
+    default="train",
+    choices=["train", "test"],
+)
 args = parser.parse_args()
 
 tools.setup_seed(0)
@@ -61,6 +69,8 @@ if not os.path.exists(os.path.join("poisoned_train_set", args.dataset)):
 def reduce_data(dataset, data_rate):
     if hasattr(dataset, "targets"):
         targets = np.array(dataset.targets)
+    elif hasattr(dataset, "gt"):
+        targets = np.array(dataset.gt)
     elif hasattr(dataset, "_labels"):
         targets = np.array(dataset._labels)
     elif hasattr(dataset, "samples"):
@@ -103,6 +113,35 @@ def reduce_data(dataset, data_rate):
     return Subset(dataset, reduced_indices)
 
 
+def load_training_source(dataset_name, data_transform, train_factory):
+    train_source = supervisor.normalize_train_source(args.train_source)
+
+    if train_source == "train":
+        return train_factory()
+
+    if dataset_name in ["imagenet", "ember"]:
+        raise NotImplementedError(
+            f"train_source={train_source} is unsupported for {dataset_name}"
+        )
+
+    clean_split_dir = os.path.join("clean_set", dataset_name, "clean_split")
+    clean_split_img_dir = os.path.join(clean_split_dir, "data")
+    clean_split_label_path = os.path.join(clean_split_dir, "clean_labels")
+
+    if not os.path.exists(clean_split_img_dir) or not os.path.exists(
+        clean_split_label_path
+    ):
+        raise FileNotFoundError(
+            f"Missing clean_split for {dataset_name}. Run create_clean_set.py first."
+        )
+
+    return tools.IMG_Dataset(
+        data_dir=clean_split_img_dir,
+        label_path=clean_split_label_path,
+        transforms=data_transform,
+    )
+
+
 if args.poison_type == "dynamic":
 
     if args.dataset == "cifar10":
@@ -113,15 +152,19 @@ if args.poison_type == "dynamic":
                 transforms.Normalize([0.4914, 0.4822, 0.4465], [0.247, 0.243, 0.261]),
             ]
         )
-        train_set = datasets.CIFAR10(
-            os.path.join(data_dir, "cifar10"),
-            train=True,
-            download=True,
-            transform=data_transform,
+        train_set = load_training_source(
+            args.dataset,
+            data_transform,
+            lambda: datasets.CIFAR10(
+                os.path.join(data_dir, "cifar10"),
+                train=True,
+                download=True,
+                transform=data_transform,
+            ),
         )
         img_size = 32
         num_classes = 10
-        channel_init = 32
+        channel_init = 32s
         steps = 3
         input_channel = 3
 
@@ -148,11 +191,15 @@ if args.poison_type == "dynamic":
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.GTSRB(
-            os.path.join(data_dir, "gtsrb"),
-            split="train",
-            transform=data_transform,
-            download=True,
+        train_set = load_training_source(
+            args.dataset,
+            data_transform,
+            lambda: datasets.GTSRB(
+                os.path.join(data_dir, "gtsrb"),
+                split="train",
+                transform=data_transform,
+                download=True,
+            ),
         )
 
         img_size = 32
@@ -180,11 +227,15 @@ elif args.poison_type == "ISSBA":
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.CIFAR10(
-            os.path.join(data_dir, "cifar10"),
-            train=True,
-            download=True,
-            transform=data_transform,
+        train_set = load_training_source(
+            args.dataset,
+            data_transform,
+            lambda: datasets.CIFAR10(
+                os.path.join(data_dir, "cifar10"),
+                train=True,
+                download=True,
+                transform=data_transform,
+            ),
         )
         img_size = 32
         num_classes = 10
@@ -200,11 +251,15 @@ elif args.poison_type == "ISSBA":
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.GTSRB(
-            os.path.join(data_dir, "gtsrb"),
-            split="train",
-            transform=data_transform,
-            download=True,
+        train_set = load_training_source(
+            args.dataset,
+            data_transform,
+            lambda: datasets.GTSRB(
+                os.path.join(data_dir, "gtsrb"),
+                split="train",
+                transform=data_transform,
+                download=True,
+            ),
         )
 
         img_size = 32
@@ -228,11 +283,15 @@ else:
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.GTSRB(
-            os.path.join(data_dir, "gtsrb"),
-            split="train",
-            transform=data_transform,
-            download=True,
+        train_set = load_training_source(
+            args.dataset,
+            data_transform,
+            lambda: datasets.GTSRB(
+                os.path.join(data_dir, "gtsrb"),
+                split="train",
+                transform=data_transform,
+                download=True,
+            ),
         )
         img_size = 32
         num_classes = 43
@@ -244,11 +303,15 @@ else:
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.CIFAR10(
-            os.path.join(data_dir, "cifar10"),
-            train=True,
-            download=True,
-            transform=data_transform,
+        train_set = load_training_source(
+            args.dataset,
+            data_transform,
+            lambda: datasets.CIFAR10(
+                os.path.join(data_dir, "cifar10"),
+                train=True,
+                download=True,
+                transform=data_transform,
+            ),
         )
         img_size = 32
         num_classes = 10
@@ -260,11 +323,15 @@ else:
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.CIFAR100(
-            os.path.join(data_dir, "cifar100"),
-            train=True,
-            download=True,
-            transform=data_transform,
+        train_set = load_training_source(
+            args.dataset,
+            data_transform,
+            lambda: datasets.CIFAR100(
+                os.path.join(data_dir, "cifar100"),
+                train=True,
+                download=True,
+                transform=data_transform,
+            ),
         )
         img_size = 32
         num_classes = 100
@@ -276,9 +343,13 @@ else:
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.ImageFolder(
-            os.path.join(os.path.join(data_dir, "tinyimagenet"), "train"),
+        train_set = load_training_source(
+            args.dataset,
             data_transform,
+            lambda: datasets.ImageFolder(
+                os.path.join(os.path.join(data_dir, "tinyimagenet"), "train"),
+                data_transform,
+            ),
         )
         img_size = 64
         num_classes = 200
@@ -290,11 +361,15 @@ else:
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.STL10(
-            os.path.join(data_dir, "stl10"),
-            split="train",
-            download=True,
-            transform=data_transform,
+        train_set = load_training_source(
+            args.dataset,
+            data_transform,
+            lambda: datasets.STL10(
+                os.path.join(data_dir, "stl10"),
+                split="train",
+                download=True,
+                transform=data_transform,
+            ),
         )
         img_size = 96
         num_classes = 10
@@ -307,9 +382,13 @@ else:
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.ImageFolder(
-            os.path.join(os.path.join(data_dir, "imagenet100"), "train"),
+        train_set = load_training_source(
+            args.dataset,
             data_transform,
+            lambda: datasets.ImageFolder(
+                os.path.join(os.path.join(data_dir, "imagenet100"), "train"),
+                data_transform,
+            ),
         )
         img_size = 96
         num_classes = 100
@@ -322,8 +401,13 @@ else:
                 transforms.ToTensor(),
             ]
         )
-        train_set = datasets.ImageFolder(
-            os.path.join(os.path.join(data_dir, "imagenette2"), "train"), data_transform
+        train_set = load_training_source(
+            args.dataset,
+            data_transform,
+            lambda: datasets.ImageFolder(
+                os.path.join(os.path.join(data_dir, "imagenette2"), "train"),
+                data_transform,
+            ),
         )
         img_size = 224
         num_classes = 10
@@ -333,6 +417,8 @@ else:
 
 if args.data_rate < 1.0:
     train_set = reduce_data(train_set, args.data_rate)
+
+print(f"[Train Source] {args.train_source}, num samples = {len(train_set)}")
 
 trigger_transform = transforms.Compose([transforms.ToTensor()])
 
@@ -609,6 +695,10 @@ if args.poison_type in [
         )
 
     elif args.poison_type == "clean_label":
+        if supervisor.normalize_train_source(args.train_source) != "train":
+            raise NotImplementedError(
+                "clean_label only supports train_source=train"
+            )
 
         if args.dataset == "cifar10":
             adv_imgs_path = (
@@ -648,6 +738,10 @@ if args.poison_type in [
         )
 
     elif args.poison_type == "SleeperAgent":
+        if supervisor.normalize_train_source(args.train_source) != "train":
+            raise NotImplementedError(
+                "SleeperAgent only supports train_source=train"
+            )
         from poison_tool_box import SleeperAgent
 
         if args.dataset == "cifar10":

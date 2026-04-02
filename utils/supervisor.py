@@ -70,6 +70,20 @@ def get_model_dir(args, cleanse=False, defense=False):
         return f"{get_poison_set_dir(args)}/{get_model_name(args, cleanse=cleanse, defense=defense)}"
 
 
+def normalize_train_source(train_source):
+    return train_source
+
+
+def get_train_source_suffix(args):
+    train_source = normalize_train_source(getattr(args, "train_source", "train"))
+    if train_source == "train":
+        return ""
+    suffix = f"_train_source={train_source}"
+    if train_source == "test":
+        suffix = f"{suffix}_clean_budget={getattr(args, 'clean_budget', 2000)}"
+    return suffix
+
+
 def get_dir_core(args, include_model_name=False, include_poison_seed=False):
     ratio = "%.3f" % args.poison_rate
     # ratio = '%.1f' % (args.poison_rate * 100) + '%'
@@ -118,6 +132,7 @@ def get_dir_core(args, include_model_name=False, include_poison_seed=False):
         dir_core = f"{dir_core}_{get_model_name(args)}"
     if include_poison_seed:
         dir_core = f"{dir_core}_poison_seed={config.poison_seed}"
+    dir_core = f"{dir_core}{get_train_source_suffix(args)}"
     if config.record_model_arch:
         dir_core = f"{dir_core}_arch={get_arch(args).__name__}"
     return dir_core
@@ -181,6 +196,7 @@ def get_poison_set_dir(args):
 
     if config.record_poison_seed:
         poison_set_dir = f"{poison_set_dir}_poison_seed={config.poison_seed}"  # debug
+    poison_set_dir = f"{poison_set_dir}{get_train_source_suffix(args)}"
     # if config.record_model_arch: poison_set_dir = f'{poison_set_dir}_arch={get_arch(args).__name__}'
     return poison_set_dir
 

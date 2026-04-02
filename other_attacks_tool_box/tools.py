@@ -50,6 +50,47 @@ def tanh_func(x: torch.Tensor) -> torch.Tensor:
     return (x.tanh() + 1) * 0.5
 
 
+def _reduce_dataset(dataset, data_rate):
+    if data_rate >= 1.0:
+        return dataset
+
+    if hasattr(dataset, "targets"):
+        targets = np.array(dataset.targets)
+    elif hasattr(dataset, "gt"):
+        targets = np.array(dataset.gt)
+    elif hasattr(dataset, "_labels"):
+        targets = np.array(dataset._labels)
+    elif hasattr(dataset, "samples"):
+        targets = np.array([s[1] for s in dataset.samples])
+    else:
+        targets = np.array([label for _, label in dataset])
+
+    unique_classes = np.unique(targets)
+    reduced_indices = []
+    for cls in unique_classes:
+        class_indices = np.where(targets == cls)[0]
+        num_to_keep = int(np.round(len(class_indices) * data_rate))
+        if num_to_keep == 0 and len(class_indices) > 0 and data_rate > 0:
+            num_to_keep = 1
+        num_to_keep = min(num_to_keep, len(class_indices))
+        np.random.shuffle(class_indices)
+        reduced_indices.extend(class_indices[:num_to_keep].tolist())
+
+    np.random.shuffle(reduced_indices)
+    return torch.utils.data.Subset(dataset, reduced_indices)
+
+
+def _build_loader(dataset, batch_size, shuffle, drop_last):
+    return DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,
+        num_workers=4,
+        pin_memory=True,
+    )
+
+
 def generate_dataloader(
     dataset="cifar10",
     dataset_path="./data/",
@@ -58,7 +99,12 @@ def generate_dataloader(
     shuffle=True,
     drop_last=False,
     data_transform=None,
+    train_source="train",
+    clean_budget=2000,
+    data_rate=1.0,
 ):
+    train_source = supervisor.normalize_train_source(train_source)
+
     if dataset == "cifar10":
         if data_transform is None:
             data_transform = transforms.Compose(
@@ -71,29 +117,39 @@ def generate_dataloader(
             )
         dataset_path = os.path.join(dataset_path, "cifar10")
         if split == "train":
-            train_data = datasets.CIFAR10(
-                root=dataset_path, train=True, download=False, transform=data_transform
-            )
-            train_data_loader = DataLoader(
+            if train_source == "test":
+                train_set_dir = os.path.join("clean_set", "cifar10", "clean_split")
+                train_set_img_dir = os.path.join(train_set_dir, "data")
+                train_set_label_path = os.path.join(train_set_dir, "clean_labels")
+                train_data = IMG_Dataset(
+                    data_dir=train_set_img_dir,
+                    label_path=train_set_label_path,
+                    transforms=data_transform,
+                )
+            else:
+                train_data = datasets.CIFAR10(
+                    root=dataset_path,
+                    train=True,
+                    download=False,
+                    transform=data_transform,
+                )
+            train_data = _reduce_dataset(train_data, data_rate)
+            train_data_loader = _build_loader(
                 dataset=train_data,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return train_data_loader
         elif split == "std_test" or split == "full_test":
             test_data = datasets.CIFAR10(
                 root=dataset_path, train=False, download=False, transform=data_transform
             )
-            test_data_loader = DataLoader(
+            test_data_loader = _build_loader(
                 dataset=test_data,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return test_data_loader
         elif split == "valid" or split == "val":
@@ -105,13 +161,11 @@ def generate_dataloader(
                 label_path=val_set_label_path,
                 transforms=data_transform,
             )
-            val_loader = torch.utils.data.DataLoader(
+            val_loader = _build_loader(
                 val_set,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return val_loader
         elif split == "test":
@@ -123,13 +177,11 @@ def generate_dataloader(
                 label_path=test_set_label_path,
                 transforms=data_transform,
             )
-            test_loader = torch.utils.data.DataLoader(
+            test_loader = _build_loader(
                 test_set,
                 batch_size=batch_size,
-                shuffle=True,
+                shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return test_loader
     elif dataset == "gtsrb":
@@ -144,19 +196,28 @@ def generate_dataloader(
             )
         dataset_path = os.path.join(dataset_path, "gtsrb")
         if split == "train":
-            train_data = datasets.GTSRB(
-                root=dataset_path,
-                split="train",
-                download=False,
-                transform=data_transform,
-            )
-            train_data_loader = DataLoader(
+            if train_source == "test":
+                train_set_dir = os.path.join("clean_set", "gtsrb", "clean_split")
+                train_set_img_dir = os.path.join(train_set_dir, "data")
+                train_set_label_path = os.path.join(train_set_dir, "clean_labels")
+                train_data = IMG_Dataset(
+                    data_dir=train_set_img_dir,
+                    label_path=train_set_label_path,
+                    transforms=data_transform,
+                )
+            else:
+                train_data = datasets.GTSRB(
+                    root=dataset_path,
+                    split="train",
+                    download=False,
+                    transform=data_transform,
+                )
+            train_data = _reduce_dataset(train_data, data_rate)
+            train_data_loader = _build_loader(
                 dataset=train_data,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return train_data_loader
         elif split == "std_test" or split == "full_test":
@@ -166,13 +227,11 @@ def generate_dataloader(
                 download=False,
                 transform=data_transform,
             )
-            test_data_loader = DataLoader(
+            test_data_loader = _build_loader(
                 dataset=test_data,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return test_data_loader
         elif split == "valid" or split == "val":
@@ -184,13 +243,11 @@ def generate_dataloader(
                 label_path=val_set_label_path,
                 transforms=data_transform,
             )
-            val_loader = torch.utils.data.DataLoader(
+            val_loader = _build_loader(
                 val_set,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return val_loader
         elif split == "test":
@@ -202,13 +259,11 @@ def generate_dataloader(
                 label_path=test_set_label_path,
                 transforms=data_transform,
             )
-            test_loader = torch.utils.data.DataLoader(
+            test_loader = _build_loader(
                 test_set,
                 batch_size=batch_size,
-                shuffle=True,
+                shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return test_loader
     elif dataset == "imagenette":
@@ -221,31 +276,38 @@ def generate_dataloader(
             )
         dataset_path = os.path.join(dataset_path, "imagenette2")
         if split == "train":
-            train_data = datasets.ImageFolder(
-                os.path.join(os.path.join(data_dir, "imagenette2"), "train"),
-                data_transform,
-            )
-            train_data_loader = DataLoader(
+            if train_source == "test":
+                train_set_dir = os.path.join("clean_set", "imagenette", "clean_split")
+                train_set_img_dir = os.path.join(train_set_dir, "data")
+                train_set_label_path = os.path.join(train_set_dir, "clean_labels")
+                train_data = IMG_Dataset(
+                    data_dir=train_set_img_dir,
+                    label_path=train_set_label_path,
+                    transforms=data_transform,
+                )
+            else:
+                train_data = datasets.ImageFolder(
+                    os.path.join(dataset_path, "train"),
+                    data_transform,
+                )
+            train_data = _reduce_dataset(train_data, data_rate)
+            train_data_loader = _build_loader(
                 dataset=train_data,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return train_data_loader
         elif split == "std_test" or split == "full_test":
             test_data = datasets.ImageFolder(
-                os.path.join(os.path.join(data_dir, "imagenette2"), "val"),
+                os.path.join(dataset_path, "val"),
                 data_transform,
             )
-            test_data_loader = DataLoader(
+            test_data_loader = _build_loader(
                 dataset=test_data,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return test_data_loader
         elif split == "valid" or split == "val":
@@ -257,13 +319,11 @@ def generate_dataloader(
                 label_path=val_set_label_path,
                 transforms=data_transform,
             )
-            val_loader = torch.utils.data.DataLoader(
+            val_loader = _build_loader(
                 val_set,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return val_loader
         elif split == "test":
@@ -275,13 +335,11 @@ def generate_dataloader(
                 label_path=test_set_label_path,
                 transforms=data_transform,
             )
-            test_loader = torch.utils.data.DataLoader(
+            test_loader = _build_loader(
                 test_set,
                 batch_size=batch_size,
-                shuffle=True,
+                shuffle=shuffle,
                 drop_last=drop_last,
-                num_workers=4,
-                pin_memory=True,
             )
             return test_loader
     else:

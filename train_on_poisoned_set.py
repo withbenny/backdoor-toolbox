@@ -65,9 +65,24 @@ def main():
     parser.add_argument("-log", default=False, action="store_true")
     parser.add_argument("-seed", type=int, required=False, default=default_args.seed)
     parser.add_argument("-data_rate", type=float, required=True, default=1.0)
+    parser.add_argument("-clean_budget", type=int, required=False, default=2000)
+    parser.add_argument(
+        "-train_source",
+        type=str,
+        required=False,
+        default="train",
+        choices=["train", "test"],
+    )
 
     args = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % args.devices
+    train_source = supervisor.normalize_train_source(args.train_source)
+
+    if train_source == "test" and args.no_aug:
+        print(
+            "[Train Source] test requires augmentation for small-data training; overriding -no_aug."
+        )
+        args.no_aug = False
 
     if args.trigger is None:
         args.trigger = config.trigger_default[args.dataset][args.poison_type]
@@ -170,7 +185,7 @@ def main():
         epochs = 100
         milestones = torch.tensor([50, 75])
         learning_rate = 0.1
-        batch_size = 128
+        batch_size = 512
 
     elif args.dataset == "cifar100":
 
@@ -181,7 +196,7 @@ def main():
         epochs = 100
         milestones = torch.tensor([])
         learning_rate = 0.1
-        batch_size = 128
+        batch_size = 512
 
     elif args.dataset == "tinyimagenet":
 
@@ -264,6 +279,23 @@ def main():
 
         print("<Undefined Dataset> Dataset = %s" % args.dataset)
         raise NotImplementedError("<To Be Implemented> Dataset = %s" % args.dataset)
+
+    if train_source == "test" and args.dataset not in ["ember", "imagenet"]:
+        if args.dataset in ["tinyimagenet", "imagenet100", "imagenette"]:
+            tuned_batch_size = min(batch_size, 32)
+        else:
+            tuned_batch_size = min(batch_size, 64)
+
+        if tuned_batch_size < batch_size:
+            learning_rate = learning_rate * tuned_batch_size / batch_size
+            batch_size = tuned_batch_size
+
+        effective_train_size = max(1, int(round(args.clean_budget * args.data_rate)))
+        print(
+            "[Small Data Training] "
+            f"train_source={train_source}, effective_train_size~{effective_train_size}, "
+            f"batch_size={batch_size}, lr={learning_rate:.6f}, aug=on"
+        )
 
     if args.dataset == "imagenet":
         kwargs = {"num_workers": 32, "pin_memory": True}
