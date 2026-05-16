@@ -226,8 +226,8 @@ def main():
     with open("config.toml", "rb") as f:
         cfg = tomllib.load(f)
     poison_types = [""
-        # "none", "badnet", "blend", "trojan", "WaNet", "adaptive_blend", "adaptive_patch", "dynamic"
-        "WaNet", "adaptive_blend", "adaptive_patch", "dynamic"
+        "none", "badnet", "blend", "trojan", "WaNet", "adaptive_blend", "adaptive_patch", "dynamic"
+        # "WaNet", "adaptive_blend", "adaptive_patch", "dynamic"
     ]
     # choices: none, badnet, blend, trojan, SIG, dynamic, ISSBA, WaNet, TaCT, adaptive_blend, adaptive_patch
     # other attack choice: bpp
