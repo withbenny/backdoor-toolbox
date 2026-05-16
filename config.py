@@ -1,4 +1,4 @@
-from utils import resnet, vgg, mobilenetv2, ember_nn, gtsrb_cnn, wresnet
+from utils import resnet, vgg, mobilenetv2, mobilenetv3, ember_nn, gtsrb_cnn, wresnet
 from utils import supervisor
 from utils import tools
 import torch, torchvision
@@ -182,7 +182,8 @@ trigger_default = {
 
 arch = {
     ### for base model & poison distillation
-    "cifar10": resnet.ResNet18,
+    # "cifar10": resnet.ResNet18,
+    "cifar10": mobilenetv3.mobilenetv3_large,
     "cifar100": resnet.ResNet18,
     "tinyimagenet": resnet.ResNet18,
     "imagenet100": resnet.ResNet18,

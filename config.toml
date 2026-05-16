@@ -1,10 +1,10 @@
 [Trainer]
-dataset = "cifar100" # choices: cifar10, gtsrb, stl10, cifar100, tinyimagenet, imagenet100
-train_source = "train" # choices: train, test
+dataset = "cifar10" # choices: cifar10, gtsrb, stl10, cifar100, tinyimagenet, imagenet100
+train_source = "test" # choices: train, test
 clean_budget = 2000 # train_source test will use clean_budget samples
 data_rate = 1
 poison_rate = 0.1
-num_models = 15
+num_models = 20
 
 [Trainer.WaNet]
 cover_rate = 0.1
