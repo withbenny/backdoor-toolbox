@@ -25,8 +25,21 @@ class BackdoorAttack:
             self.weight_decay = 1e-4
             self.learning_rate = 0.1
         elif args.dataset == "cifar100":
-            print("<To Be Implemented> Dataset = %s" % args.dataset)
-            exit(0)
+            self.img_size = 32
+            self.num_classes = 100
+            self.input_channel = 3
+            self.shape = torch.Size([3, 32, 32])
+            self.momentum = 0.9
+            self.weight_decay = 1e-4
+            self.learning_rate = 0.1
+        elif args.dataset == "tinyimagenet":
+            self.img_size = 64
+            self.num_classes = 200
+            self.input_channel = 3
+            self.shape = torch.Size([3, 64, 64])
+            self.momentum = 0.9
+            self.weight_decay = 1e-4
+            self.learning_rate = 0.1
         elif args.dataset == "imagenette":
             self.img_size = 224
             self.num_classes = 10

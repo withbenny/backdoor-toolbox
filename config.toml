@@ -1,10 +1,13 @@
 [Trainer]
-dataset = "cifar10" # choices: cifar10, gtsrb, stl10, cifar100, tinyimagenet, imagenet100
+dataset = "tinyimagenet" # choices: cifar10, gtsrb, stl10, cifar100, tinyimagenet, imagenet100
 train_source = "train" # choices: train, test
 clean_budget = 2000 # train_source test will use clean_budget samples
 data_rate = 1
 poison_rate = 0.1
 num_models = 15
+# choices: "none", "badnet", "blend", "trojan", "SIG", "dynamic", "ISSBA", "WaNet",
+#          "TaCT", "adaptive_blend", "adaptive_patch", "bpp"
+poison_types = ["trojan"]
 
 [Trainer.WaNet]
 cover_rate = 0.1

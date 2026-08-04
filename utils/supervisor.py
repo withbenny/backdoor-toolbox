@@ -1327,7 +1327,7 @@ def get_poison_transform(
             return poison_transform
 
         elif poison_type == "bpp":
-            if dataset_name not in ["cifar10"]:
+            if dataset_name not in ["cifar10", "gtsrb", "cifar100", "tinyimagenet"]:
                 raise NotImplementedError()
 
             from other_attacks_tool_box import bpp

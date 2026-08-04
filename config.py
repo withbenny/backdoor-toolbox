@@ -13,7 +13,7 @@ target_class = {
     "cifar10": 0,
     "cifar100": 0,
     "stl10": 0,
-    "gtsrb": 2,
+    "gtsrb": 6,
     # 'gtsrb' : 12, # BadEncoder
     "imagenet100": 0,
     "imagenette": 0,
@@ -170,6 +170,7 @@ trigger_default = {
         "BadEncoder": "none",
         "SRA": "phoenix_corner_32.png",
         "trojan": "trojan_square_32.png",
+        "bpp": "none",
     },
     "imagenet": {
         "none": "none",
@@ -183,7 +184,6 @@ trigger_default = {
 arch = {
     ### for base model & poison distillation
     # "cifar10": resnet.ResNet18,
-    "cifar10": mobilenetv2.mobilenetv2,
     "cifar100": resnet.ResNet18,
     "tinyimagenet": resnet.ResNet18,
     "imagenet100": resnet.ResNet18,
@@ -191,9 +191,9 @@ arch = {
     # 'stl10': resnet.ResNet18,
     "stl10": resnet.ResNet50,
     # 'cifar10': vgg.vgg16_bn,
-    # 'cifar10': mobilenetv2.mobilenetv2,
+    "cifar10": mobilenetv2.mobilenetv2,
     "gtsrb": resnet.ResNet18,
-    # resnet.ResNet18,
+    # "gtsrb": mobilenetv2.mobilenetv2,
     "imagenette": resnet.ResNet18,
     "ember": ember_nn.EmberNN,
     # 'imagenet' : resnet.ResNet18,

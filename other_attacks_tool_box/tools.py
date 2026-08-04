@@ -194,7 +194,9 @@ def generate_dataloader(
                     ),
                 ]
             )
-        dataset_path = os.path.join(dataset_path, "gtsrb")
+        # NOTE: torchvision's datasets.GTSRB already appends a "gtsrb" subfolder to
+        # root (root/gtsrb/GTSRB/...), so we must NOT join "gtsrb" here or the path
+        # gets doubled (root/gtsrb/gtsrb/...) and the dataset is reported missing.
         if split == "train":
             if train_source == "test":
                 train_set_dir = os.path.join("clean_set", "gtsrb", "clean_split")
@@ -328,6 +330,163 @@ def generate_dataloader(
             return val_loader
         elif split == "test":
             test_set_dir = os.path.join("clean_set", "imagenette", "test_split")
+            test_set_img_dir = os.path.join(test_set_dir, "data")
+            test_set_label_path = os.path.join(test_set_dir, "labels")
+            test_set = IMG_Dataset(
+                data_dir=test_set_img_dir,
+                label_path=test_set_label_path,
+                transforms=data_transform,
+            )
+            test_loader = _build_loader(
+                test_set,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+            return test_loader
+    elif dataset == "cifar100":
+        if data_transform is None:
+            data_transform = transforms.Compose(
+                [
+                    transforms.ToTensor(),
+                    transforms.Normalize(
+                        [0.5071, 0.4866, 0.4409], [0.2673, 0.2564, 0.2762]
+                    ),
+                ]
+            )
+        dataset_path = os.path.join(dataset_path, "cifar100")
+        if split == "train":
+            if train_source == "test":
+                train_set_dir = os.path.join("clean_set", "cifar100", "clean_split")
+                train_set_img_dir = os.path.join(train_set_dir, "data")
+                train_set_label_path = os.path.join(train_set_dir, "clean_labels")
+                train_data = IMG_Dataset(
+                    data_dir=train_set_img_dir,
+                    label_path=train_set_label_path,
+                    transforms=data_transform,
+                )
+            else:
+                train_data = datasets.CIFAR100(
+                    root=dataset_path,
+                    train=True,
+                    download=False,
+                    transform=data_transform,
+                )
+            train_data = _reduce_dataset(train_data, data_rate)
+            train_data_loader = _build_loader(
+                dataset=train_data,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+            return train_data_loader
+        elif split == "std_test" or split == "full_test":
+            test_data = datasets.CIFAR100(
+                root=dataset_path, train=False, download=False, transform=data_transform
+            )
+            test_data_loader = _build_loader(
+                dataset=test_data,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+            return test_data_loader
+        elif split == "valid" or split == "val":
+            val_set_dir = os.path.join("clean_set", "cifar100", "clean_split")
+            val_set_img_dir = os.path.join(val_set_dir, "data")
+            val_set_label_path = os.path.join(val_set_dir, "clean_labels")
+            val_set = IMG_Dataset(
+                data_dir=val_set_img_dir,
+                label_path=val_set_label_path,
+                transforms=data_transform,
+            )
+            val_loader = _build_loader(
+                val_set,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+            return val_loader
+        elif split == "test":
+            test_set_dir = os.path.join("clean_set", "cifar100", "test_split")
+            test_set_img_dir = os.path.join(test_set_dir, "data")
+            test_set_label_path = os.path.join(test_set_dir, "labels")
+            test_set = IMG_Dataset(
+                data_dir=test_set_img_dir,
+                label_path=test_set_label_path,
+                transforms=data_transform,
+            )
+            test_loader = _build_loader(
+                test_set,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+            return test_loader
+    elif dataset == "tinyimagenet":
+        if data_transform is None:
+            data_transform = transforms.Compose(
+                [
+                    transforms.ToTensor(),
+                    transforms.Normalize(
+                        [0.4802, 0.4481, 0.3975], [0.2302, 0.2265, 0.2262]
+                    ),
+                ]
+            )
+        dataset_path = os.path.join(dataset_path, "tinyimagenet")
+        if split == "train":
+            if train_source == "test":
+                train_set_dir = os.path.join("clean_set", "tinyimagenet", "clean_split")
+                train_set_img_dir = os.path.join(train_set_dir, "data")
+                train_set_label_path = os.path.join(train_set_dir, "clean_labels")
+                train_data = IMG_Dataset(
+                    data_dir=train_set_img_dir,
+                    label_path=train_set_label_path,
+                    transforms=data_transform,
+                )
+            else:
+                train_data = datasets.ImageFolder(
+                    os.path.join(dataset_path, "train"),
+                    data_transform,
+                )
+            train_data = _reduce_dataset(train_data, data_rate)
+            train_data_loader = _build_loader(
+                dataset=train_data,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+            return train_data_loader
+        elif split == "std_test" or split == "full_test":
+            test_data = datasets.ImageFolder(
+                os.path.join(dataset_path, "val"),
+                data_transform,
+            )
+            test_data_loader = _build_loader(
+                dataset=test_data,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+            return test_data_loader
+        elif split == "valid" or split == "val":
+            val_set_dir = os.path.join("clean_set", "tinyimagenet", "clean_split")
+            val_set_img_dir = os.path.join(val_set_dir, "data")
+            val_set_label_path = os.path.join(val_set_dir, "clean_labels")
+            val_set = IMG_Dataset(
+                data_dir=val_set_img_dir,
+                label_path=val_set_label_path,
+                transforms=data_transform,
+            )
+            val_loader = _build_loader(
+                val_set,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+            return val_loader
+        elif split == "test":
+            test_set_dir = os.path.join("clean_set", "tinyimagenet", "test_split")
             test_set_img_dir = os.path.join(test_set_dir, "data")
             test_set_label_path = os.path.join(test_set_dir, "labels")
             test_set = IMG_Dataset(

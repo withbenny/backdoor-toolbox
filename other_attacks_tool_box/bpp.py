@@ -37,15 +37,105 @@ class attacker(BackdoorAttack):
         if not os.path.exists(poison_set_dir):
             os.makedirs(poison_set_dir)
         if args.dataset == "cifar10":
-            self.num_classes = 10
-            self.momentum = 0.9
-            self.weight_decay = 1e-4
-            self.epochs = 100
-            self.milestones = torch.tensor([50, 75])
-            self.learning_rate = 0.1
-            self.batch_size = 128
+
+            num_classes = 10
+            arch = supervisor.get_arch(args)
+            momentum = 0.9
+            weight_decay = 1e-4
+            epochs = 100
+            milestones = torch.tensor([50, 75])
+            learning_rate = 0.1
+            batch_size = 512
+
+        elif args.dataset == "cifar100":
+
+            num_classes = 100
+            arch = supervisor.get_arch(args)
+            momentum = 0.9
+            weight_decay = 1e-4
+            epochs = 100
+            milestones = torch.tensor([])
+            learning_rate = 0.1
+            batch_size = 512
+
+        elif args.dataset == "tinyimagenet":
+
+            num_classes = 200
+            arch = supervisor.get_arch(args)
+            momentum = 0.9
+            weight_decay = 1e-4
+            epochs = 100
+            milestones = torch.tensor([])
+            learning_rate = 0.1
+            batch_size = 256
+
+        elif args.dataset == "stl10":
+
+            num_classes = 10
+            arch = supervisor.get_arch(args)
+            momentum = 0.9
+            weight_decay = 1e-4
+            epochs = 100
+            milestones = torch.tensor([50, 75])
+            learning_rate = 0.1
+            batch_size = 128
+
+        elif args.dataset == "imagenet100":
+
+            num_classes = 100
+            arch = supervisor.get_arch(args)
+            momentum = 0.9
+            weight_decay = 1e-4
+            epochs = 100
+            milestones = torch.tensor([])
+            learning_rate = 0.1
+            batch_size = 128
+
+        elif args.dataset == "gtsrb":
+
+            num_classes = 43
+            arch = supervisor.get_arch(args)
+            momentum = 0.9
+            weight_decay = 1e-4
+            epochs = 100
+            milestones = torch.tensor([30, 60])
+            learning_rate = 0.01
+            batch_size = 128
+
+        elif args.dataset == "imagenette":
+
+            num_classes = 10
+            arch = supervisor.get_arch(args)
+            momentum = 0.9
+            weight_decay = 1e-4
+            epochs = 100
+            milestones = torch.tensor([40, 80])
+            learning_rate = 0.1
+            batch_size = 128
+
+        elif args.dataset == "imagenet":
+
+            num_classes = 1000
+            arch = supervisor.get_arch(args)
+            momentum = 0.9
+            weight_decay = 1e-4
+            epochs = 90
+            milestones = torch.tensor([30, 60])
+            learning_rate = 0.1
+            batch_size = 256
         else:
             raise NotImplementedError()
+
+        # the if/elif branches above set local variables; bind the ones the base
+        # class does not provide (epochs/milestones/batch_size) back onto self,
+        # and refresh the rest so per-dataset overrides take effect.
+        self.num_classes = num_classes
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        self.epochs = epochs
+        self.milestones = milestones
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
 
         test_split = "test" if self.train_source == "test" else "full_test"
         self.train_loader = generate_dataloader(

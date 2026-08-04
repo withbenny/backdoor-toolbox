@@ -87,6 +87,11 @@ def main():
     if args.trigger is None:
         args.trigger = config.trigger_default[args.dataset][args.poison_type]
 
+    if args.poison_type == "bpp":
+        raise ValueError(
+            "poison_type=bpp must be trained with other_attack.py rather than train_on_poisoned_set.py"
+        )
+
     all_to_all = False
     if args.poison_type == "badnet_all_to_all":
         all_to_all = True
@@ -306,10 +311,17 @@ def main():
 
     if args.dataset != "ember" and args.dataset != "imagenet":
         poison_set_dir = supervisor.get_poison_set_dir(args)
+        poisoned_set_img_dir = None
         if os.path.exists(os.path.join(poison_set_dir, "data")):  # if old version
             poisoned_set_img_dir = os.path.join(poison_set_dir, "data")
         if os.path.exists(os.path.join(poison_set_dir, "imgs")):  # if new version
             poisoned_set_img_dir = os.path.join(poison_set_dir, "imgs")
+        if poisoned_set_img_dir is None:
+            raise FileNotFoundError(
+                "Poisoned training set is incomplete. "
+                f"Expected either '{os.path.join(poison_set_dir, 'data')}' "
+                f"or '{os.path.join(poison_set_dir, 'imgs')}'."
+            )
         poisoned_set_label_path = os.path.join(poison_set_dir, "labels")
         poison_indices_path = os.path.join(poison_set_dir, "poison_indices")
 

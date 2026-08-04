@@ -1,9 +1,15 @@
 import subprocess
 import os
 import time
-import tomllib
 import json
 
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
+
+
+OTHER_ATTACK_POISON_TYPES = {"bpp"}
 
 def _has_image_files(root_dir, suffixes):
     if not os.path.isdir(root_dir):
@@ -20,8 +26,11 @@ def _clean_set_meta_matches(dataset, clean_budget):
     if not os.path.exists(meta_path):
         return False
 
-    with open(meta_path, "r", encoding="utf-8") as f:
-        meta = json.load(f)
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return False
 
     return meta.get("clean_budget") == clean_budget
 
@@ -58,6 +67,10 @@ def phase2(
     clean_budget,
     cover_rate=None,
 ):
+    if poison_type in OTHER_ATTACK_POISON_TYPES:
+        raise RuntimeError(
+            f"{poison_type} should be handled by other_attack.py, not create_poisoned_set.py"
+        )
     cmd = [
         "python",
         "create_poisoned_set.py",
@@ -96,6 +109,10 @@ def phase3(
     clean_budget,
     cover_rate=None,
 ):
+    if poison_type in OTHER_ATTACK_POISON_TYPES:
+        raise RuntimeError(
+            f"{poison_type} should be handled by other_attack.py, not train_on_poisoned_set.py"
+        )
     for i in range(num_models):
         seed = int(time.strftime("%m%d%H%M"))
         cmd = [
@@ -179,14 +196,13 @@ def run_process(cfg, poison_type=None):
     poison_rate = cfg["poison_rate"]
     cover_rate = None
     num_models = cfg["num_models"]
-    train_source = cfg["train_source"]
-    clean_budget = cfg["clean_budget"]
+    train_source = cfg.get("train_source", "train")
+    clean_budget = cfg.get("clean_budget", 2000)
 
     # Phase 1: Create Clean Dataset
     phase1(dataset, clean_budget)
 
-    # Phase 2: Create Poisoned Dataset
-    if poison_type in ["bpp"]:
+    if poison_type in OTHER_ATTACK_POISON_TYPES:
         phase_other_attack(
             dataset,
             data_rate,
@@ -197,6 +213,9 @@ def run_process(cfg, poison_type=None):
             clean_budget,
             cover_rate,
         )
+        return
+
+    # Phase 2: Create Poisoned Dataset
     if poison_type in ["WaNet", "TaCT", "adaptive_blend", "adaptive_patch"]:
         cover_rate = cfg[poison_type]["cover_rate"]
     phase2(
@@ -225,12 +244,7 @@ def run_process(cfg, poison_type=None):
 def main():
     with open("config.toml", "rb") as f:
         cfg = tomllib.load(f)
-    poison_types = [""
-        "none", "badnet", "blend", "trojan", "WaNet", "adaptive_blend", "adaptive_patch", "dynamic"
-        # "WaNet", "adaptive_blend", "adaptive_patch", "dynamic"
-    ]
-    # choices: none, badnet, blend, trojan, SIG, dynamic, ISSBA, WaNet, TaCT, adaptive_blend, adaptive_patch
-    # other attack choice: bpp
+    poison_types = cfg["Trainer"].get("poison_types", ["none"])
     for poison_type in poison_types:
         print(f"=== Running for poison_type: {poison_type} ===")
         run_process(cfg["Trainer"], poison_type)
